@@ -2,9 +2,11 @@ package middlewares
 
 import (
 	"bluebell/controller"
+	"bluebell/dao/mysql"
 	"bluebell/pkg/jwt"
 	"strings"
 
+	"go.uber.org/zap"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,7 +16,7 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 		// 客户端携带Token有三种方式 1.放在请求头 2.放在请求体 3.放在URI
 		// 这里假设Token放在Header的Authorization中，并使用Bearer开头
 		// Authorization: Bearer xxxxxxx.xxx.xxx  / X-TOKEN: xxx.xxx.xx
-		// 这里的具体实现方式要依据你的实际业务情况决定
+		// 这里的具体实现方式要依据实际业务情况决定
 		authHeader := c.Request.Header.Get("Authorization")
 		if authHeader == "" {
 			controller.ResponseError(c, controller.CodeNeedLogin)
@@ -22,6 +24,7 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 			return
 		}
 		// 按空格分割
+		// zap.L().Debug("Authorization header", zap.String("authHeader", authHeader))
 		parts := strings.SplitN(authHeader, " ", 2)
 		if !(len(parts) == 2 && parts[0] == "Bearer") {
 			controller.ResponseError(c, controller.CodeInvalidToken)
@@ -30,6 +33,7 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 		}
 		// parts[1]是获取到的tokenString，我们使用之前定义好的解析JWT的函数来解析它
 		// parts[1](负载字段) 才有我们需要的数据
+		// zap.L().Debug("parts[1]", zap.String("token", parts[1]))
 		mc, err := jwt.ParseToken(parts[1])
 		if err != nil {
 			controller.ResponseError(c, controller.CodeInvalidToken)
@@ -38,7 +42,18 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 		}
 		// 将当前请求的userID信息保存到请求的上下文c上
 		// 以便后续能够能得到当前用户的信息(根据uerID)
+		// zap.L().Debug("mc.UserID", zap.Int64("userID", mc.UserID))
 		c.Set(controller.CtxUserIDKey, mc.UserID)
+
+		// 根据用户ID查询用户角色并保存到上下文
+		user, err := mysql.GetUserById(mc.UserID)
+		if err != nil {
+			zap.L().Error("GetUserById failed", zap.Error(err))
+			controller.ResponseError(c, controller.CodeServerBusy)
+			c.Abort()
+			return
+		}
+		c.Set(controller.CtxUserRoleKey, user.Role)
 
 		c.Next() // 后续的处理请求的函数中 可以用过c.Get(CtxUserIDKey) 来获取当前请求的用户信息
 	}

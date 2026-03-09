@@ -27,3 +27,28 @@ func Init(cfg *setting.MySQLConfig) (err error) {
 func Close() {
 	_ = db.Close()
 }
+
+// WithTransaction 执行事务操作（通用事务包装）
+func WithTransaction(fn func(tx *sqlx.Tx) error) error {
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			tx.Rollback()
+		} else {
+			err = tx.Commit()
+			if err != nil {
+				tx.Rollback()
+			}
+		}
+	}()
+
+	err = fn(tx)
+	return err
+}

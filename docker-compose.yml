@@ -1,26 +1,74 @@
-# yaml 配置
-version: "3.7"
+version: "3.8"
+
 services:
-  mysql8019:
-    image: "mysql:8.0.19"
-    ports:
-      - "33061:3306"
-    command: "--default-authentication-plugin=mysql_native_password --init-file /data/application/init.sql"
+  mysql:
+    image: mysql:8.0
+    container_name: bluebell-mysql
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: "root1234"
-      MYSQL_DATABASE: "bluebell"
-      MYSQL_PASSWORD: "root1234"
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: bluebell
+      MYSQL_CHARSET: utf8mb4
+    ports:
+      - "13306:3306"
     volumes:
-      - ./init.sql:/data/application/init.sql
-  redis507:
-    image: "redis:5.0.7"
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: bluebell-redis
+    restart: unless-stopped
+    command: redis-server --requirepass 123456
     ports:
-      - "26379:6379"
-  bluebell_app:
-    build: .
-    command: sh -c "./wait-for.sh mysql8019:3306 redis507:6379 -- ./bluebell_app ./conf/config.yaml"
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bluebell-app
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    volumes:
+      - ./conf/dev.yaml:/app/conf/dev.yaml:ro
     depends_on:
-      - mysql8019
-      - redis507
-    ports:
-      - "8888:8084"
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["./wait-for.sh", "mysql:3306", "--", "./bluebell", "conf/dev.yaml"]
+
+  # 开发/测试用容器（挂载源码 + Go 工具链）
+  dev:
+    image: golang:1.21
+    container_name: bluebell-ai
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - dev
+
+volumes:
+  mysql_data:
+  redis_data:

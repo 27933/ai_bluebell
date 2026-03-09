@@ -1,12 +1,12 @@
 name: "bluebell"
-mode: "release"
+mode: "dev"
 port: 8084
 version: "v0.0.1"
-start_time: "2020-07-01"
+start_time: "2026-07-01"
 machine_id: 1
 
 auth:
-  jwt_expire: 8760
+  jwt_expire: 8
 
 log:
   level: "info"
@@ -15,16 +15,16 @@ log:
   max_age: 30
   max_backups: 7
 mysql:
-  host: mysql8019
+  host: "172.31.66.223"
   port: 3306
   user: "root"
-  password: "root1234"
+  password: "123456"
   dbname: "bluebell"
   max_open_conns: 200
   max_idle_conns: 50
 redis:
-  host: redis507
+  host: "172.31.66.223"
   port: 6379
-  password: ""
-  db: 0
+  password: "123456"
+  db: 6
   pool_size: 100

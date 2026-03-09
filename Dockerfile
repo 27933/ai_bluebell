@@ -1,47 +1,34 @@
-FROM golang:alpine AS builder
+FROM golang:1.21 AS builder
 
-# 为我们的镜像设置必要的环境变量
-ENV GO111MODULE=on \
-    CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64
-
-# 移动到工作目录：/build
 WORKDIR /build
 
-# 复制项目中的 go.mod 和 go.sum文件并下载依赖信息
-COPY go.mod .
-COPY go.sum .
+# 先复制依赖文件，利用 Docker 缓存
+COPY go.mod go.sum ./
 RUN go mod download
 
-# 将代码复制到容器中
+# 复制源码并编译
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o bluebell .
 
-# 将我们的代码编译成二进制可执行文件 bluebell_app
-RUN go build -o bluebell_app .
+# --- 运行阶段 ---
+FROM debian:bookworm-slim
 
-###################
-# 接下来创建一个小镜像
-###################
-FROM debian:stretch-slim
+WORKDIR /app
 
-COPY ./wait-for.sh /
-COPY ./templates /templates
-COPY ./static /static
-COPY ./conf /conf
+# 安装必要的运行时依赖和等待工具
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*
 
-# 从builder镜像中把/dist/app 拷贝到当前目录
-COPY --from=builder /build/bluebell_app /
+# 从构建阶段复制二进制
+COPY --from=builder /build/bluebell .
+COPY --from=builder /build/wait-for.sh .
+RUN chmod +x wait-for.sh
 
-RUN set -eux; \
-	apt-get update; \
-	apt-get install -y \
-		--no-install-recommends \
-		netcat; \
-        chmod 755 wait-for.sh
+# 复制配置文件（运行时可通过挂载覆盖）
+COPY conf/ ./conf/
 
-# 声明服务端口
 EXPOSE 8084
 
-# 需要运行的命令
-#ENTRYPOINT ["/bluebell_app", "conf/config.yaml"]
+# 默认使用 dev.yaml 配置启动，可通过 CMD 覆盖
+CMD ["./bluebell", "conf/dev.yaml"]

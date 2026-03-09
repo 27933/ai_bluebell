@@ -1,0 +1,23 @@
+# Binaries
+bluebell
+main
+*.exe
+
+# Logs
+*.log
+app.log
+web_app.log
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Node (if any)
+node_modules/
+package-lock.json
+
+# Claude Code
+.claude/

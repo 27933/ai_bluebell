@@ -10,7 +10,10 @@ import (
 // 对请求进行处理的函数
 // 处理在请求中携带的数据
 
-const CtxUserIDKey = "userID"
+const (
+	CtxUserIDKey   = "userID"
+	CtxUserRoleKey = "userRole"
+)
 
 var ErrorUserNotLogin = errors.New("用户未登录")
 
@@ -23,6 +26,22 @@ func getCurrentUserID(c *gin.Context) (userID int64, err error) {
 		return
 	}
 	userID, ok = uid.(int64)
+	if !ok {
+		err = ErrorUserNotLogin
+		return
+	}
+	return
+}
+
+// getCurrentUserRole 获取当前登录的用户角色
+func getCurrentUserRole(c *gin.Context) (userRole string, err error) {
+	// 从上下文中获取用户角色
+	role, ok := c.Get(CtxUserRoleKey)
+	if !ok {
+		err = ErrorUserNotLogin
+		return
+	}
+	userRole, ok = role.(string)
 	if !ok {
 		err = ErrorUserNotLogin
 		return
