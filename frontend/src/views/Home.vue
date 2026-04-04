@@ -1,84 +1,187 @@
 <template>
-  <div class="home-container">
-    <div class="home-header">
-      <h1>Bluebell 博客</h1>
-      <p>发现优质内容，分享知识故事</p>
-    </div>
-
-    <div class="articles-section">
-      <div class="section-header">
-        <h2>最新文章</h2>
-        <el-pagination
-          v-model:current-page="currentPage"
-          :page-size="pageSize"
-          :total="total"
-          layout="prev, pager, next"
-          @current-change="handlePageChange"
-        />
+  <div class="page-wrapper">
+    <div class="container py-4">
+      <!-- 搜索和筛选 -->
+      <div class="row mb-4">
+        <div class="col-md-8">
+          <div class="input-group">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="form-control"
+              placeholder="搜索文章..."
+            />
+            <button class="btn btn-primary" type="button" @click="handleSearch">
+              <i class="bi bi-search"></i> 搜索
+            </button>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <select v-model="sortBy" class="form-select">
+            <option value="hot">按热度排序</option>
+            <option value="latest">按时间排序</option>
+            <option value="comments">按评论排序</option>
+          </select>
+        </div>
       </div>
 
-      <el-empty v-if="loading" description="加载中..." />
+      <!-- 标签筛选 -->
+      <div class="mb-4">
+        <div class="d-flex gap-2 flex-wrap">
+          <span
+            v-for="tag in popularTags"
+            :key="tag"
+            class="tag"
+            @click="searchQuery = tag"
+          >
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 文章列表 -->
+      <div v-if="loading" class="empty-state">
+        <p>加载中...</p>
+      </div>
 
       <div v-else-if="articles.length === 0" class="empty-state">
-        <el-empty description="暂无文章" />
+        <p>暂无文章</p>
       </div>
 
-      <div v-else class="articles-grid">
-        <el-card v-for="article in articles" :key="article.id" class="article-card">
-          <div class="article-header">
-            <router-link :to="`/article/${article.id}`" class="article-title">
-              {{ article.title }}
-            </router-link>
-            <span v-if="article.is_featured" class="featured-badge">精选</span>
-          </div>
-
-          <p class="article-summary">{{ article.summary }}</p>
-
-          <div class="article-meta">
-            <span class="meta-item">
-              <i class="el-icon-view" />
-              {{ article.view_count }}
-            </span>
-            <span class="meta-item">
-              <i class="el-icon-thumb" />
-              {{ article.like_count }}
-            </span>
-            <span class="meta-item">
-              <i class="el-icon-chat-dot-round" />
-              {{ article.comment_count }}
-            </span>
-            <span class="meta-date">{{ formatDate(article.created_at) }}</span>
-          </div>
-        </el-card>
+      <div v-else class="row g-4 mb-4">
+        <!-- 文章卡片 -->
+        <div
+          v-for="article in articles"
+          :key="article.id"
+          class="col-md-6"
+        >
+          <router-link :to="`/article/${article.id}`" class="article-card">
+            <div class="card-body">
+              <h5 class="article-title">{{ article.title }}</h5>
+              <p class="article-summary">{{ article.summary }}</p>
+              <div class="mb-2">
+                <span
+                  v-for="tag in (article.tags || []).slice(0, 2)"
+                  :key="tag"
+                  class="tag"
+                >
+                  {{ tag }}
+                </span>
+              </div>
+              <div class="article-meta">
+                <div class="author-info">
+                  <div class="author-avatar">{{ getInitial(article.author?.username) }}</div>
+                  <div>
+                    <div class="author-name">{{ article.author?.username || 'Unknown' }}</div>
+                    <small class="text-muted">{{ timeAgo(article.created_at) }}</small>
+                  </div>
+                </div>
+                <div>
+                  <i class="bi bi-eye"></i> {{ article.view_count }} &nbsp;
+                  <i class="bi bi-heart"></i> {{ article.like_count }} &nbsp;
+                  <i class="bi bi-chat"></i> {{ article.comment_count }}
+                </div>
+              </div>
+            </div>
+          </router-link>
+        </div>
       </div>
+
+      <!-- 分页 -->
+      <nav v-if="!loading && articles.length > 0" aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+          <li :class="{ disabled: currentPage === 1 }" class="page-item">
+            <a
+              href="javascript:void(0)"
+              class="page-link"
+              @click="currentPage > 1 && (currentPage--, loadArticles())"
+            >
+              上一页
+            </a>
+          </li>
+          <li
+            v-for="page in totalPages"
+            :key="page"
+            :class="{ active: currentPage === page }"
+            class="page-item"
+          >
+            <a
+              href="javascript:void(0)"
+              class="page-link"
+              @click="currentPage = page; loadArticles()"
+            >
+              {{ page }}
+            </a>
+          </li>
+          <li :class="{ disabled: currentPage >= totalPages }" class="page-item">
+            <a
+              href="javascript:void(0)"
+              class="page-link"
+              @click="currentPage < totalPages && (currentPage++, loadArticles())"
+            >
+              下一页
+            </a>
+          </li>
+        </ul>
+      </nav>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import apiClient from '../services/api'
-import { ElMessage } from 'element-plus'
+
+interface Author {
+  id: string
+  username: string
+}
 
 interface Article {
   id: string
   title: string
   summary: string
+  author: Author
+  tags?: string[]
   view_count: number
   like_count: number
   comment_count: number
-  is_featured: boolean
   created_at: string
 }
 
 const articles = ref<Article[]>([])
 const loading = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(6)
 const total = ref(0)
+const searchQuery = ref('')
+const sortBy = ref('hot')
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('zh-CN')
+const popularTags = [
+  'Vue.js',
+  'TypeScript',
+  '后端开发',
+  '数据库',
+  '性能优化',
+]
+
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1)
+
+function getInitial(name?: string): string {
+  if (!name) return '？'
+  return name.charAt(0).toUpperCase()
+}
+
+function timeAgo(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (days === 0) return '今天'
+  if (days === 1) return '1 天前'
+  if (days < 7) return `${days} 天前`
+  return `${Math.floor(days / 7)} 周前`
 }
 
 async function loadArticles() {
@@ -96,17 +199,21 @@ async function loadArticles() {
       articles.value = response.data.list || []
       total.value = response.data.total || 0
     } else {
-      ElMessage.error(response.msg || '加载失败')
+      console.error('加载失败:', response.msg)
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '加载失败')
+    console.error('加载失败:', error.message)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange() {
-  loadArticles()
+function handleSearch() {
+  if (searchQuery.value.trim()) {
+    // 暂时在当前列表中过滤搜索结果
+    // TODO: 调用后端搜索 API
+    console.log('搜索关键词:', searchQuery.value)
+  }
 }
 
 onMounted(() => {
@@ -115,122 +222,323 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.home-container {
-  max-width: 1000px;
+:root {
+  --primary-color: #2563eb;
+  --secondary-color: #64748b;
+  --danger-color: #ef4444;
+}
+
+.page-wrapper {
+  background-color: #f8fafc;
+  min-height: 100%;
+  padding: 0;
+}
+
+.container {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 0 1rem;
+  width: 100%;
 }
 
-.home-header {
-  text-align: center;
-  margin-bottom: 40px;
-  padding: 40px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 8px;
+.py-4 {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
 }
 
-.home-header h1 {
-  font-size: 40px;
-  margin: 0 0 10px 0;
+.mb-4 {
+  margin-bottom: 1.5rem;
 }
 
-.home-header p {
-  font-size: 16px;
-  margin: 0;
-  opacity: 0.9;
+.mb-2 {
+  margin-bottom: 0.5rem;
 }
 
-.articles-section {
-  margin-top: 40px;
-}
-
-.section-header {
+/* Grid */
+.row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  margin-right: -0.5rem;
+  margin-left: -0.5rem;
 }
 
-.section-header h2 {
-  margin: 0;
-  color: #333;
-  font-size: 24px;
+.col-md-8 {
+  flex: 0 0 66.666667%;
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
 }
 
-.articles-grid {
-  display: grid;
-  gap: 20px;
+.col-md-6 {
+  flex: 0 0 50%;
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
 }
 
-.article-card {
+.col-md-4 {
+  flex: 0 0 33.333333%;
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.g-4 {
+  gap: 1rem;
+}
+
+/* 表单 */
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.form-control,
+.form-select {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.form-control {
+  flex: 1;
+  color: #334155;
+  background-color: white;
+}
+
+.form-control:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-select {
+  width: 100%;
+  color: #334155;
+  background-color: white;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+/* 按钮 */
+.btn {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* 标签 */
+.tag {
+  display: inline-block;
+  background-color: #eef2ff;
+  color: var(--primary-color);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tag:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.d-flex {
+  display: flex;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+/* 文章卡片 */
+.article-card {
+  border: none;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  height: 100%;
 }
 
 .article-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
-.article-header {
+.card-body {
+  padding: 1.5rem;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  flex-direction: column;
+  height: 100%;
 }
 
 .article-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  text-decoration: none;
-  flex: 1;
-}
-
-.article-title:hover {
-  color: #409eff;
-}
-
-.featured-badge {
-  background-color: #f56c6c;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  margin-left: 8px;
-}
-
-.article-summary {
-  color: #666;
-  line-height: 1.6;
-  margin: 10px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.2;
+}
+
+.article-summary {
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  flex-grow: 1;
 }
 
 .article-meta {
   display: flex;
-  gap: 20px;
-  font-size: 12px;
-  color: #999;
-  margin-top: 12px;
-}
-
-.meta-item {
-  display: inline-flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 4px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 1rem;
+  margin-top: auto;
 }
 
-.meta-date {
-  margin-left: auto;
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.author-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.author-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.text-muted {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+/* 分页 */
+.pagination {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 0.25rem;
+}
+
+.page-item {
+  list-style: none;
+}
+
+.page-link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.page-link:hover {
+  background-color: #f8fafc;
+}
+
+.page-item.active .page-link {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.page-item.disabled .page-link {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.justify-content-center {
+  justify-content: center;
 }
 
 .empty-state {
-  padding: 60px 20px;
   text-align: center;
+  padding: 2rem 1rem;
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .col-md-8,
+  .col-md-6,
+  .col-md-4 {
+    flex: 0 0 100%;
+  }
+
+  .input-group {
+    flex-direction: column;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+  }
+
+  .article-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .col-md-6 {
+    flex: 0 0 100%;
+  }
 }
 </style>

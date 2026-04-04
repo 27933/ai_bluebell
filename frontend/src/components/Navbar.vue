@@ -1,118 +1,289 @@
 <template>
-  <el-header class="navbar">
-    <div class="navbar-container">
-      <router-link to="/" class="logo">
-        <h1>Bluebell Blog</h1>
+  <!-- 导航栏 -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <router-link to="/" class="navbar-brand">
+        <i class="bi bi-journal-text"></i> Bluebell
       </router-link>
 
-      <div class="nav-menu">
-        <router-link to="/" class="nav-link">首页</router-link>
-        <router-link to="/articles" class="nav-link">浏览</router-link>
+      <div class="navbar-nav ms-auto">
+        <router-link to="/" class="nav-item">
+          <a class="nav-link">首页</a>
+        </router-link>
+        <router-link to="/search" class="nav-item">
+          <a class="nav-link">搜索</a>
+        </router-link>
+        <router-link to="/tags" class="nav-item">
+          <a class="nav-link">标签</a>
+        </router-link>
 
-        <!-- 登录前 -->
+        <!-- 未登录状态 -->
         <template v-if="!authStore.isLoggedIn">
-          <router-link to="/login" class="nav-link">登录</router-link>
-          <router-link to="/register" class="nav-link">注册</router-link>
+          <router-link to="/login" class="nav-item auth-link">
+            <a class="nav-link" style="color: var(--primary-color); font-weight: 600;">登录</a>
+          </router-link>
+          <router-link to="/register" class="nav-item">
+            <a class="nav-link" style="color: var(--primary-color);">注册</a>
+          </router-link>
         </template>
 
-        <!-- 登录后 -->
-        <template v-else>
-          <!-- Reader 菜单 -->
-          <template v-if="authStore.user?.role === 'reader'">
-            <router-link to="/profile" class="nav-link">个人资料</router-link>
-          </template>
+        <!-- 已登录状态 - 用户菜单 -->
+        <div v-else class="nav-item user-menu" @mouseleave="closeUserMenu">
+          <button class="user-menu-toggle" @click="toggleUserMenu">
+            <div class="user-avatar">{{ getInitial(authStore.user?.username) }}</div>
+            <span>{{ authStore.user?.username }}</span>
+            <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+          </button>
 
-          <!-- Author 和 Admin 菜单 -->
-          <template v-if="authStore.user?.role === 'author' || authStore.user?.role === 'admin'">
-            <router-link to="/write" class="nav-link">写文章</router-link>
-            <router-link to="/dashboard" class="nav-link">仪表板</router-link>
-            <router-link to="/profile" class="nav-link">个人资料</router-link>
-          </template>
+          <div v-show="userMenuOpen" class="user-dropdown">
+            <!-- 作者菜单项 -->
+            <router-link to="/profile" class="dropdown-link">
+              <i class="bi bi-person"></i> 我的主页
+            </router-link>
+            <router-link
+              v-if="authStore.user?.role === 'author' || authStore.user?.role === 'admin'"
+              to="/write"
+              class="dropdown-link"
+            >
+              <i class="bi bi-pencil"></i> 写文章
+            </router-link>
+            <router-link
+              v-if="authStore.user?.role === 'author' || authStore.user?.role === 'admin'"
+              to="/dashboard"
+              class="dropdown-link"
+            >
+              <i class="bi bi-bar-chart"></i> 仪表板
+            </router-link>
 
-          <!-- Admin 菜单 -->
-          <template v-if="authStore.user?.role === 'admin'">
-            <router-link to="/admin" class="nav-link">管理后台</router-link>
-          </template>
+            <!-- 普通菜单项 -->
+            <router-link to="/profile" class="dropdown-link">
+              <i class="bi bi-user-circle"></i> 个人资料
+            </router-link>
 
-          <!-- 用户菜单 -->
-          <el-dropdown @command="handleCommand" class="user-menu">
-            <span class="user-name">{{ authStore.user?.username }}</span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">我的主页</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </template>
+            <!-- 管理员菜单项 -->
+            <router-link
+              v-if="authStore.user?.role === 'admin'"
+              to="/admin"
+              class="dropdown-link"
+            >
+              <i class="bi bi-gear"></i> 管理后台
+            </router-link>
+
+            <div class="divider"></div>
+
+            <button class="dropdown-link logout" @click="handleLogout">
+              <i class="bi bi-box-arrow-right"></i> 退出登录
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </el-header>
+  </nav>
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '../stores/auth'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const userMenuOpen = ref(false)
 
-function handleCommand(command: string) {
-  if (command === 'logout') {
-    authStore.logout()
-    router.push('/login')
-  } else if (command === 'profile') {
-    router.push('/profile')
-  }
+function getInitial(name?: string): string {
+  if (!name) return '？'
+  return name.charAt(0).toUpperCase()
+}
+
+function toggleUserMenu() {
+  userMenuOpen.value = !userMenuOpen.value
+}
+
+function closeUserMenu() {
+  userMenuOpen.value = false
+}
+
+async function handleLogout() {
+  authStore.logout()
+  userMenuOpen.value = false
+  router.push('/login')
 }
 </script>
 
 <style scoped>
+:root {
+  --primary-color: #2563eb;
+  --secondary-color: #64748b;
+  --danger-color: #ef4444;
+}
+
+/* ===== 导航栏 ===== */
 .navbar {
-  background-color: #fff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 0 20px;
-  height: 60px;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.navbar-container {
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  height: 100%;
+  justify-content: space-between;
 }
 
-.logo {
+.navbar-brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color) !important;
   text-decoration: none;
-}
-
-.logo h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #409eff;
-}
-
-.nav-menu {
   display: flex;
-  gap: 30px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
   align-items: center;
 }
 
 .nav-link {
+  color: var(--secondary-color) !important;
+  font-weight: 500;
+  margin: 0 0.5rem;
+  transition: all 0.3s;
   text-decoration: none;
-  color: #333;
-  transition: color 0.3s;
+  display: block;
+  padding: 0.5rem 0;
 }
 
 .nav-link:hover {
-  color: #409eff;
+  color: var(--primary-color) !important;
 }
 
+.nav-link.active {
+  color: var(--primary-color) !important;
+}
+
+.ms-auto {
+  margin-left: auto;
+}
+
+/* ===== 用户菜单 ===== */
 .user-menu {
-  cursor: pointer;
+  position: relative;
+  display: inline-block;
+  margin-left: 1rem;
 }
 
-.user-name {
-  color: #333;
+.user-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--secondary-color);
+  font-weight: 500;
+  transition: all 0.3s;
+  border-radius: 6px;
+}
+
+.user-menu-toggle:hover {
+  background-color: #f1f5f9;
+  color: var(--primary-color);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.user-dropdown {
+  display: block;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-link {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: #334155;
+  font-size: 0.95rem;
+  transition: all 0.3s;
+  text-decoration: none;
+  font-weight: normal;
+}
+
+.dropdown-link:hover {
+  background-color: #f8fafc;
+  color: var(--primary-color);
+}
+
+.dropdown-link:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.divider {
+  height: 1px;
+  background-color: #e2e8f0;
+  margin: 0.5rem 0;
+}
+
+.logout {
+  color: var(--danger-color);
+}
+
+.logout:hover {
+  background-color: #fef2f2;
+}
+
+.logout:last-child {
+  border-radius: 0 0 8px 8px;
 }
 </style>

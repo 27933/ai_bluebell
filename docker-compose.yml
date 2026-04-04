@@ -50,7 +50,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["./wait-for.sh", "mysql:3306", "--", "./bluebell", "conf/dev.yaml"]
+    command: ["./bluebell", "conf/dev.yaml"]
 
   # 开发/测试用容器（挂载源码 + Go 工具链）
   dev:

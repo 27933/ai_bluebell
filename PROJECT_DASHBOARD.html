@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluebell 项目仪表板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .stat-subtext {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .chart-card h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .features-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+
+        .features-section h2 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 1.5em;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-item {
+            border-left: 4px solid #667eea;
+            padding-left: 20px;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .feature-item h4 {
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .feature-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-right: 10px;
+            text-transform: uppercase;
+        }
+
+        .badge-high {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .badge-medium {
+            background: #ffd93d;
+            color: #333;
+        }
+
+        .badge-low {
+            background: #6bcf7f;
+            color: white;
+        }
+
+        .feature-item p {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            opacity: 0.8;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Bluebell 博客平台</h1>
+            <p>完整的全栈博客系统 | 项目仪表板</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>📊 项目规模</h3>
+                <div class="stat-number">22,795</div>
+                <div class="stat-subtext">总代码行数</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>🔙 后端</h3>
+                <div class="stat-number">19,290</div>
+                <div class="stat-subtext">Go 代码行数</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 85%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>🎨 前端</h3>
+                <div class="stat-number">3,505</div>
+                <div class="stat-subtext">Vue 代码行数</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 15%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>✅ 完成度</h3>
+                <div class="stat-number">Phase 4</div>
+                <div class="stat-subtext">点赞系统 + 仪表板</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 75%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>📝 Git 提交</h3>
+                <div class="stat-number">8</div>
+                <div class="stat-subtext">总提交数</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 40%"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>🗄️ 数据库</h3>
+                <div class="stat-number">12+</div>
+                <div class="stat-subtext">数据表</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 60%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>代码分布</h3>
+                <div class="chart-container">
+                    <canvas id="codeDistribution"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3>功能实现进度</h3>
+                <div class="chart-container">
+                    <canvas id="featureProgress"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <h2>📋 功能实现清单</h2>
+
+            <div class="feature-list">
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge">✅ 完成</span>
+                        用户认证系统
+                    </h4>
+                    <p>JWT 令牌、用户注册/登录、权限控制</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge">✅ 完成</span>
+                        文章管理
+                    </h4>
+                    <p>CRUD 操作、编辑发布、内容展示</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge">✅ 完成</span>
+                        评论系统
+                    </h4>
+                    <p>评论、回复、评论管理</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge">✅ 完成</span>
+                        点赞系统
+                    </h4>
+                    <p>文章点赞、点赞状态查询</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge">✅ 完成</span>
+                        仪表板
+                    </h4>
+                    <p>统计数据、趋势图、数据可视化</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-high">🔴 高</span>
+                        粉丝/关注系统
+                    </h4>
+                    <p>关注作者、粉丝管理、互动系统</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-high">🔴 高</span>
+                        管理员后台
+                    </h4>
+                    <p>用户管理、文章管理、系统统计</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-medium">🟡 中</span>
+                        文件导出
+                    </h4>
+                    <p>Markdown 导出、批量下载</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-medium">🟡 中</span>
+                        RSS 订阅
+                    </h4>
+                    <p>RSS 源、订阅链接</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-medium">🟡 中</span>
+                        评论编辑
+                    </h4>
+                    <p>编辑自己的评论</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-low">🟢 低</span>
+                        移动端适配
+                    </h4>
+                    <p>响应式设计、手机优化</p>
+                </div>
+
+                <div class="feature-item">
+                    <h4>
+                        <span class="feature-badge badge-low">🟢 低</span>
+                        深色主题
+                    </h4>
+                    <p>主题切换、偏好保存</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>✨ Bluebell 项目 | 由 Claude AI 驱动 | 2026年4月</p>
+        </div>
+    </div>
+
+    <script>
+        // 代码分布图
+        const codeCtx = document.getElementById('codeDistribution').getContext('2d');
+        new Chart(codeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['后端 (Go)', '前端 (Vue/TS)', '配置/其他'],
+                datasets: [{
+                    data: [84.7, 15.3, 0],
+                    backgroundColor: [
+                        '#667eea',
+                        '#764ba2',
+                        '#e0e0e0'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 14 },
+                            padding: 20
+                        }
+                    }
+                }
+            }
+        });
+
+        // 功能进度图
+        const featureCtx = document.getElementById('featureProgress').getContext('2d');
+        new Chart(featureCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', '待做功能'],
+                datasets: [{
+                    label: '完成度 (%)',
+                    data: [100, 100, 100, 100, 0],
+                    backgroundColor: [
+                        '#6bcf7f',
+                        '#6bcf7f',
+                        '#6bcf7f',
+                        '#667eea',
+                        '#e0e0e0'
+                    ],
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

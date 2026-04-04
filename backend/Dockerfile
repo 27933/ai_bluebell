@@ -15,11 +15,18 @@ FROM golang:1.21-alpine
 
 WORKDIR /app
 
+# 安装所需的工具（nc 用于 wait-for.sh）
+RUN apk add --no-cache netcat
+
 # 从构建阶段复制二进制
 COPY --from=builder /build/bluebell .
 
 # 复制配置文件（运行时可通过挂载覆盖）
 COPY conf/ ./conf/
+
+# 复制 wait-for.sh 脚本
+COPY wait-for.sh .
+RUN chmod +x wait-for.sh
 
 EXPOSE 8084
 
