@@ -222,7 +222,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-:root {
+:root,
+:host {
   --primary-color: #2563eb;
   --secondary-color: #64748b;
   --danger-color: #ef4444;
@@ -254,96 +255,73 @@ onMounted(() => {
   margin-bottom: 0.5rem;
 }
 
-/* Grid */
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  margin-right: -0.5rem;
-  margin-left: -0.5rem;
-}
-
-.col-md-8 {
-  flex: 0 0 66.666667%;
-  padding-right: 0.5rem;
-  padding-left: 0.5rem;
-}
-
-.col-md-6 {
-  flex: 0 0 50%;
-  padding-right: 0.5rem;
-  padding-left: 0.5rem;
-}
-
-.col-md-4 {
-  flex: 0 0 33.333333%;
-  padding-right: 0.5rem;
-  padding-left: 0.5rem;
-}
-
-.g-4 {
-  gap: 1rem;
-}
+/* Bootstrap utility classes (override if needed) */
+/* Note: Most of these come from Bootstrap CDN now */
 
 /* 表单 */
 .input-group {
   display: flex;
   gap: 0.5rem;
+  align-items: stretch;
 }
 
 .form-control,
 .form-select {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  transition: all 0.3s;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 6px !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem !important;
+  transition: all 0.3s !important;
 }
 
 .form-control {
-  flex: 1;
-  color: #334155;
-  background-color: white;
+  flex: 1 !important;
+  color: #334155 !important;
+  background-color: white !important;
+  min-width: 0;
 }
 
 .form-control:focus,
 .form-select:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
 }
 
 .form-select {
-  width: 100%;
-  color: #334155;
-  background-color: white;
-  cursor: pointer;
+  width: 100% !important;
+  color: #334155 !important;
+  background-color: white !important;
+  cursor: pointer !important;
 }
 
 /* 按钮 */
 .btn {
-  padding: 0.75rem 1.25rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  white-space: nowrap;
+  padding: 0.75rem 1.25rem !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: all 0.3s !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  font-size: 1rem !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  min-width: max-content !important;
 }
 
 .btn-primary {
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
+  background-color: #2563eb !important;
+  color: white !important;
+  border: none !important;
 }
 
 .btn-primary:hover {
-  background-color: #1d4ed8;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  background-color: #1d4ed8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
 }
 
 /* 标签 */
