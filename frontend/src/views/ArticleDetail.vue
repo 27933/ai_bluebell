@@ -196,6 +196,25 @@ async function handleLike() {
   }
 }
 
+async function loadLikeStatus() {
+  const articleId = route.params.id as string
+  if (!authStore.isLoggedIn) return // 未登录不查询
+
+  try {
+    const response = await apiClient.get('/likes/status', {
+      params: {
+        target_type: 'article',
+        target_id: articleId,
+      },
+    })
+    if (response.code === 1000) {
+      isLiked.value = response.data?.is_liked || false
+    }
+  } catch (error) {
+    console.error('Failed to load like status:', error)
+  }
+}
+
 async function handleSubmitComment() {
   if (!newComment.content.trim()) {
     ElMessage.warning('请输入评论内容')
@@ -230,6 +249,7 @@ async function handleSubmitComment() {
 onMounted(() => {
   loadArticle()
   loadComments()
+  loadLikeStatus()
 })
 </script>
 

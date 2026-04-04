@@ -1,0 +1,32 @@
+name: "bluebell"
+mode: "release"
+port: 8084
+version: "v2.0.0"
+start_time: "2026-07-01"
+machine_id: 1
+
+auth:
+  jwt_expire:   # TODO: 填充 Access Token 有效期（小时）
+
+log:
+  level: ""
+  filename: ""
+  max_size:
+  max_age:
+  max_backups:
+
+mysql:
+  host: ""
+  port:
+  user: ""
+  password: ""
+  dbname: ""
+  max_open_conns:
+  max_idle_conns:
+
+redis:
+  host: ""
+  port:
+  password: ""
+  db:
+  pool_size:

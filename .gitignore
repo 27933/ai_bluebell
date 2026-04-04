@@ -1,23 +1,34 @@
-# Binaries
-bluebell
-main
+# Backend Binaries
+backend/bluebell
+backend/main
 *.exe
 
 # Logs
 *.log
-app.log
-web_app.log
+backend/app.log
+backend/web_app.log
 
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # OS
 .DS_Store
 
-# Node (if any)
-node_modules/
-package-lock.json
+# Backend
+backend/bin/
+backend/.air/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+frontend/package-lock.json
+frontend/yarn.lock
 
 # Claude Code
 .claude/
+.claude/plans/

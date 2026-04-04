@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluebell 博客平台 - MVP原型</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/highlight.js@11.8.0/styles/atom-one-light.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --danger-color: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #334155;
+        }
+
+        /* ===== 导航栏 ===== */
+        .navbar {
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color) !important;
+        }
+
+        .nav-link {
+            color: var(--secondary-color) !important;
+            font-weight: 500;
+            margin: 0 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        /* ===== 用户菜单 ===== */
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-menu-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--secondary-color);
+            font-weight: 500;
+            transition: all 0.3s;
+            border-radius: 6px;
+        }
+
+        .user-menu-toggle:hover {
+            background-color: #f1f5f9;
+            color: var(--primary-color);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 200px;
+            z-index: 1000;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        .user-dropdown.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-dropdown a, .user-dropdown button {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            color: #334155;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .user-dropdown a:hover, .user-dropdown button:hover {
+            background-color: #f8fafc;
+            color: var(--primary-color);
+        }
+
+        .user-dropdown .divider {
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 0.5rem 0;
+        }
+
+        .user-dropdown .logout {
+            color: var(--danger-color);
+        }
+
+        .user-dropdown .logout:hover {
+            background-color: #fef2f2;
+        }
+
+        /* ===== 卡片 ===== */
+        .article-card {
+            border: none;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            height: 100%;
+        }
+
+        .article-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .article-card .card-body {
+            padding: 1.5rem;
+        }
+
+        .article-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .article-summary {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .article-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1rem;
+        }
+
+        .tag {
+            display: inline-block;
+            background-color: #eef2ff;
+            color: var(--primary-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tag:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* ===== 作者信息 ===== */
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .author-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .author-name {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        /* ===== 按钮 ===== */
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            border-color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        /* ===== 表单 ===== */
+        .form-control, .form-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        /* ===== Markdown编辑器 ===== */
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            height: 500px;
+        }
+
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .editor-header {
+            background-color: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .editor-textarea {
+            flex: 1;
+            border: none;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+        }
+
+        .preview-content {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: white;
+        }
+
+        .preview-content h1, .preview-content h2, .preview-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #0f172a;
+        }
+
+        .preview-content code {
+            background-color: #f1f5f9;
+            border-radius: 4px;
+            padding: 0.2rem 0.5rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: #e11d48;
+        }
+
+        .preview-content pre {
+            background-color: #f1f5f9;
+            border-radius: 6px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+
+        /* ===== 评论区域 ===== */
+        .comment {
+            padding: 1rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .comment:last-child {
+            border-bottom: none;
+        }
+
+        .comment-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .comment-content {
+            color: #334155;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+        }
+
+        .comment-time {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* ===== 统计卡片 ===== */
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-top: 0.5rem;
+        }
+
+        /* ===== 页面容器 ===== */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .article-meta {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* ===== 工具栏 ===== */
+        .editor-toolbar {
+            background-color: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            background: none;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #64748b;
+            transition: all 0.3s;
+        }
+
+        .toolbar-btn:hover {
+            background-color: white;
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="navbar navbar-expand-lg">
+            <div class="container">
+                <a class="navbar-brand" href="javascript:showPage('home')">
+                    <i class="bi bi-journal-text"></i> Bluebell
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link" href="javascript:showPage('home')">首页</a></li>
+                        <li class="nav-item"><a class="nav-link" href="javascript:showPage('search')">搜索</a></li>
+                        <li class="nav-item"><a class="nav-link" href="javascript:showPage('tags')">标签</a></li>
+
+                        <!-- 未登录状态 -->
+                        <li class="nav-item" id="auth-buttons">
+                            <a class="nav-link" href="javascript:showPage('login')" style="color: var(--primary-color); font-weight: 600;">登录</a>
+                        </li>
+                        <li class="nav-item" id="signup-button">
+                            <a class="nav-link" href="javascript:showPage('signup')" style="color: var(--primary-color);">注册</a>
+                        </li>
+
+                        <!-- 已登录状态 - 用户菜单 -->
+                        <li class="nav-item user-menu" id="user-menu" style="display: none; margin-left: 1rem;">
+                            <button class="user-menu-toggle" onclick="toggleUserMenu()">
+                                <div class="user-avatar" id="navbar-avatar">A</div>
+                                <span id="navbar-username">Alice</span>
+                                <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+                            </button>
+
+                            <div class="user-dropdown" id="user-dropdown">
+                                <!-- 作者菜单项 -->
+                                <a href="javascript:showPage('author'); closeUserMenu()" id="menu-my-home">
+                                    <i class="bi bi-person"></i> 我的主页
+                                </a>
+                                <a href="javascript:showPage('edit'); closeUserMenu()" id="menu-write" style="display: none;">
+                                    <i class="bi bi-pencil"></i> 写文章
+                                </a>
+                                <a href="javascript:showPage('dashboard'); closeUserMenu()" id="menu-dashboard" style="display: none;">
+                                    <i class="bi bi-bar-chart"></i> 仪表板
+                                </a>
+
+                                <!-- 普通菜单项 -->
+                                <a href="javascript:showPage('profile'); closeUserMenu()">
+                                    <i class="bi bi-user-circle"></i> 个人资料
+                                </a>
+
+                                <!-- 管理员菜单项 -->
+                                <a href="javascript:alert('管理后台敬请期待'); closeUserMenu()" id="menu-admin" style="display: none;">
+                                    <i class="bi bi-gear"></i> 管理后台
+                                </a>
+
+                                <div class="divider"></div>
+
+                                <button class="logout" onclick="logout()">
+                                    <i class="bi bi-box-arrow-right"></i> 退出登录
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ===== 页面1: 首页 ===== -->
+        <div id="home-page" class="page active">
+            <div class="container py-4">
+                <!-- 搜索和筛选 -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="搜索文章...">
+                            <button class="btn btn-primary" type="button">
+                                <i class="bi bi-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select">
+                            <option>按热度排序</option>
+                            <option>按时间排序</option>
+                            <option>按评论排序</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 标签筛选 -->
+                <div class="mb-4">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="tag">Vue.js</span>
+                        <span class="tag">TypeScript</span>
+                        <span class="tag">后端开发</span>
+                        <span class="tag">数据库</span>
+                        <span class="tag">性能优化</span>
+                    </div>
+                </div>
+
+                <!-- 文章列表 -->
+                <div class="row g-4 mb-4">
+                    <!-- 文章卡片1 -->
+                    <div class="col-md-6">
+                        <a href="javascript:showPage('detail')" class="article-card">
+                            <div class="card-body">
+                                <h5 class="article-title">Vue 3 Composition API 最佳实践</h5>
+                                <p class="article-summary">深入探讨 Vue 3 Composition API 的设计原理、最佳实践和常见陷阱。本文将通过实际代码示例展示如何编写更加清晰和可维护的组件...</p>
+                                <div class="mb-2">
+                                    <span class="tag">Vue.js</span>
+                                    <span class="tag">TypeScript</span>
+                                </div>
+                                <div class="article-meta">
+                                    <div class="author-info">
+                                        <div class="author-avatar">A</div>
+                                        <div>
+                                            <div class="author-name">Alice</div>
+                                            <small class="text-muted">2 天前</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-eye"></i> 234 &nbsp;
+                                        <i class="bi bi-heart"></i> 45 &nbsp;
+                                        <i class="bi bi-chat"></i> 12
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- 文章卡片2 -->
+                    <div class="col-md-6">
+                        <a href="javascript:showPage('detail')" class="article-card">
+                            <div class="card-body">
+                                <h5 class="article-title">Go 并发编程详解：goroutine 和 channel</h5>
+                                <p class="article-summary">从零开始学习 Go 的并发模型。详细讲解 goroutine、channel、sync 包等核心概念，并通过实战例子展示如何编写高效的并发程序...</p>
+                                <div class="mb-2">
+                                    <span class="tag">Go</span>
+                                    <span class="tag">并发编程</span>
+                                </div>
+                                <div class="article-meta">
+                                    <div class="author-info">
+                                        <div class="author-avatar">B</div>
+                                        <div>
+                                            <div class="author-name">Bob</div>
+                                            <small class="text-muted">4 天前</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-eye"></i> 567 &nbsp;
+                                        <i class="bi bi-heart"></i> 89 &nbsp;
+                                        <i class="bi bi-chat"></i> 34
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 分页 -->
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item disabled"><a class="page-link" href="#">上一页</a></li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item"><a class="page-link" href="#">下一页</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <!-- ===== 页面2: 文章详情 ===== -->
+        <div id="detail-page" class="page">
+            <article class="container py-4">
+                <!-- 文章头部 -->
+                <div class="row justify-content-center mb-4">
+                    <div class="col-lg-8">
+                        <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Vue 3 Composition API 最佳实践</h1>
+
+                        <div class="author-info mb-4">
+                            <div class="author-avatar" style="width: 48px; height: 48px; font-size: 1.2rem;">A</div>
+                            <div>
+                                <div class="author-name">Alice 的博客</div>
+                                <small class="text-muted">发布于 2026-04-02 &nbsp; 更新于 2026-04-03</small>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 1rem; align-items: center; color: #64748b; font-size: 0.9rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem;">
+                            <span><i class="bi bi-eye"></i> 234 次浏览</span>
+                            <span><i class="bi bi-heart"></i> 45 个赞</span>
+                            <span><i class="bi bi-chat"></i> 12 条评论</span>
+                            <span><i class="bi bi-file-text"></i> 3200 字</span>
+                        </div>
+
+                        <!-- 标签 -->
+                        <div class="mb-4">
+                            <span class="tag">Vue.js</span>
+                            <span class="tag">TypeScript</span>
+                            <span class="tag">前端开发</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文章内容 -->
+                <div class="row justify-content-center mb-4">
+                    <div class="col-lg-8">
+                        <div style="line-height: 1.8; color: #334155; font-size: 1.05rem;">
+                            <h2>什么是 Composition API？</h2>
+                            <p>Vue 3 引入的 Composition API 是一种新的组件编写方式，相对于 Options API，它提供了更好的代码组织和重用能力。</p>
+
+                            <h2>核心概念</h2>
+                            <p>Composition API 围绕 <code>setup</code> 函数展开，在这个函数中你可以使用各种 API 来定义组件的逻辑。</p>
+
+                            <pre><code class="language-typescript">import { ref, computed, watch } from 'vue'
+
+export default {
+  setup() {
+    const count = ref(0)
+    const doubled = computed(() => count.value * 2)
+
+    watch(count, (newVal) => {
+      console.log(`Count changed to ${newVal}`)
+    })
+
+    return { count, doubled }
+  }
+}</code></pre>
+
+                            <h2>最佳实践</h2>
+                            <p>1. <strong>逻辑分离</strong> - 将相关的逻辑聚集在一起<br>
+                            2. <strong>代码重用</strong> - 使用 Composable 函数提高代码复用率<br>
+                            3. <strong>类型安全</strong> - 充分利用 TypeScript 的类型系统<br>
+                            4. <strong>性能优化</strong> - 合理使用 computed 和 watch</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="row justify-content-center mb-4">
+                    <div class="col-lg-8">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary">
+                                <i class="bi bi-heart"></i> 赞 (45)
+                            </button>
+                            <button class="btn btn-outline-primary">
+                                <i class="bi bi-bookmark"></i> 收藏
+                            </button>
+                            <button class="btn btn-outline-primary">
+                                <i class="bi bi-share"></i> 分享
+                            </button>
+                            <!-- 编辑按钮 - 仅作者可见 -->
+                            <button id="edit-article-btn" class="btn btn-outline-secondary" style="display: none;"
+                                    onclick="editArticleFromDetail()">
+                                <i class="bi bi-pencil"></i> 编辑
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 评论区域 -->
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div style="background: white; border-radius: 8px; padding: 2rem; border: 1px solid #e2e8f0;">
+                            <h3 style="font-weight: 600; margin-bottom: 1.5rem;">评论 (12)</h3>
+
+                            <!-- 评论输入框 -->
+                            <div class="mb-4">
+                                <textarea class="form-control" rows="3" placeholder="说说你的看法..."></textarea>
+                                <button class="btn btn-primary mt-2">发表评论</button>
+                            </div>
+
+                            <!-- 评论列表 -->
+                            <div class="comment">
+                                <div class="comment-author">
+                                    <div class="author-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">C</div>
+                                    <div>
+                                        <div class="author-name">Charlie</div>
+                                        <span class="comment-time">2 小时前</span>
+                                    </div>
+                                </div>
+                                <div class="comment-content">非常好的文章，讲解得很详细。我之前对 Composition API 还有疑惑，现在清楚多了！</div>
+                                <small><a href="javascript:void(0)" style="color: var(--primary-color);">回复</a></small>
+                            </div>
+
+                            <div class="comment">
+                                <div class="comment-author">
+                                    <div class="author-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">D</div>
+                                    <div>
+                                        <div class="author-name">Diana</div>
+                                        <span class="comment-time">1 小时前</span>
+                                    </div>
+                                </div>
+                                <div class="comment-content">请问能否详细说明 watch 和 watchEffect 的区别呢？</div>
+                                <small><a href="javascript:void(0)" style="color: var(--primary-color);">回复</a></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <!-- ===== 页面3: 登录/注册 ===== -->
+        <div id="login-page" class="page">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-5">
+                        <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                            <h2 style="text-align: center; font-weight: 700; margin-bottom: 2rem;">登录 Bluebell</h2>
+
+                            <form onsubmit="handleLogin(event)">
+                                <div class="mb-3">
+                                    <label class="form-label">邮箱</label>
+                                    <input type="email" id="login-email" class="form-control" placeholder="your@email.com" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">密码</label>
+                                    <input type="password" id="login-password" class="form-control" placeholder="输入密码" required>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="remember">
+                                    <label class="form-check-label" for="remember">记住我</label>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 mb-3">登录</button>
+                            </form>
+
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">
+                                    <strong>演示账户：</strong>
+                                </p>
+                                <button onclick="login('alice', 'reader')" class="btn btn-sm btn-outline-secondary w-100 mb-2">
+                                    演示读者账户
+                                </button>
+                                <button onclick="login('bob', 'author')" class="btn btn-sm btn-outline-secondary w-100 mb-2">
+                                    演示作者账户
+                                </button>
+                                <button onclick="login('admin', 'admin')" class="btn btn-sm btn-outline-secondary w-100">
+                                    演示管理员账户
+                                </button>
+                            </div>
+
+                            <div style="text-align: center; color: #64748b; font-size: 0.9rem;">
+                                还没有账户？ <a href="javascript:showPage('signup')" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">立即注册</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面10: 注册 ===== -->
+        <div id="signup-page" class="page">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-5">
+                        <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                            <h2 style="text-align: center; font-weight: 700; margin-bottom: 2rem;">注册 Bluebell</h2>
+
+                            <form onsubmit="handleSignup(event)">
+                                <div class="mb-3">
+                                    <label class="form-label">用户名</label>
+                                    <input type="text" id="signup-username" class="form-control" placeholder="请输入用户名（不可重复）" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">邮箱</label>
+                                    <input type="email" id="signup-email" class="form-control" placeholder="your@email.com" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">密码</label>
+                                    <input type="password" id="signup-password" class="form-control" placeholder="至少 8 位" required minlength="8">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">确认密码</label>
+                                    <input type="password" id="signup-confirm" class="form-control" placeholder="再次输入密码" required>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="agreeTerms" required>
+                                    <label class="form-check-label" for="agreeTerms">
+                                        我已阅读并同意 <a href="javascript:void(0)" style="color: var(--primary-color); text-decoration: none;">服务条款</a>
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 mb-3">注册</button>
+                            </form>
+
+                            <div style="text-align: center; color: #64748b; font-size: 0.9rem;">
+                                已有账户？ <a href="javascript:showPage('login')" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">立即登录</a>
+                            </div>
+
+                            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+                                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0;">
+                                    <strong>注意：</strong>注册后成为普通读者，如需成为作者请联系管理员。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面4: 仪表板 ===== -->
+        <div id="dashboard-page" class="page">
+            <div class="container py-4">
+                <!-- 欢迎信息 -->
+                <div style="background: linear-gradient(135deg, var(--primary-color), #7c3aed); border-radius: 12px; padding: 2rem; color: white; margin-bottom: 2rem;">
+                    <h2>欢迎回来，Alice！</h2>
+                    <p>继续创作，分享你的想法和经验。</p>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">已发布文章</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number">2.5K</div>
+                            <div class="stat-label">总浏览量</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number">345</div>
+                            <div class="stat-label">获赞总数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number">256</div>
+                            <div class="stat-label">粉丝数</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 阅读趋势图 -->
+                <div style="background: white; border-radius: 12px; padding: 2rem; border: 1px solid #e2e8f0; margin-bottom: 2rem;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="font-weight: 700; margin-bottom: 0.5rem;">阅读趋势</h3>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-sm btn-outline-primary active">周统计</button>
+                            <button class="btn btn-sm btn-outline-primary">月统计</button>
+                        </div>
+                    </div>
+
+                    <!-- 简单的SVG折线图示意 -->
+                    <svg width="100%" height="300" style="background: #f8fafc; border-radius: 8px;">
+                        <!-- 网格线 -->
+                        <line x1="40" y1="30" x2="40" y2="280" stroke="#e2e8f0" stroke-width="1"/>
+                        <line x1="40" y1="280" x2="95%" y2="280" stroke="#e2e8f0" stroke-width="1"/>
+
+                        <!-- Y轴标签 -->
+                        <text x="30" y="285" font-size="12" fill="#94a3b8">0</text>
+                        <text x="20" y="195" font-size="12" fill="#94a3b8">500</text>
+                        <text x="20" y="105" font-size="12" fill="#94a3b8">1000</text>
+                        <text x="20" y="15" font-size="12" fill="#94a3b8">1500</text>
+
+                        <!-- 折线数据（示意） -->
+                        <polyline points="50,200 120,150 190,180 260,120 330,100 400,140 470,80"
+                                  fill="none" stroke="#2563eb" stroke-width="2" style="filter: drop-shadow(0 2px 4px rgba(37,99,235,0.2))"/>
+
+                        <!-- 数据点 -->
+                        <circle cx="50" cy="200" r="4" fill="#2563eb"/>
+                        <circle cx="120" cy="150" r="4" fill="#2563eb"/>
+                        <circle cx="190" cy="180" r="4" fill="#2563eb"/>
+                        <circle cx="260" cy="120" r="4" fill="#2563eb"/>
+                        <circle cx="330" cy="100" r="4" fill="#2563eb"/>
+                        <circle cx="400" cy="140" r="4" fill="#2563eb"/>
+                        <circle cx="470" cy="80" r="4" fill="#2563eb"/>
+
+                        <!-- X轴标签 -->
+                        <text x="45" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周一</text>
+                        <text x="115" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周二</text>
+                        <text x="185" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周三</text>
+                        <text x="255" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周四</text>
+                        <text x="325" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周五</text>
+                        <text x="395" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周六</text>
+                        <text x="465" y="300" font-size="12" fill="#94a3b8" text-anchor="middle">周日</text>
+                    </svg>
+
+                    <div style="margin-top: 1rem; display: flex; gap: 2rem; font-size: 0.9rem;">
+                        <div>
+                            <span style="display: inline-block; width: 12px; height: 12px; background: #2563eb; border-radius: 2px; margin-right: 0.5rem;"></span>
+                            浏览人次
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文章管理 -->
+                <div style="background: white; border-radius: 12px; padding: 2rem; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="font-weight: 700; margin: 0;">我的文章</h3>
+                        <button class="btn btn-primary" onclick="showPage('edit')">
+                            <i class="bi bi-plus"></i> 写新文章
+                        </button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="table table-hover">
+                            <thead style="background-color: #f8fafc;">
+                                <tr>
+                                    <th>标题</th>
+                                    <th>状态</th>
+                                    <th>浏览</th>
+                                    <th>赞</th>
+                                    <th>评论</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Vue 3 Composition API 最佳实践</strong></td>
+                                    <td><span class="badge bg-success">已发布</span></td>
+                                    <td>234</td>
+                                    <td>45</td>
+                                    <td>12</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editArticle(1, 'Vue 3 Composition API 最佳实践', 'published', '深入探讨 Vue 3 Composition API 的设计原理...', ['Vue.js', 'TypeScript'])">编辑</button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteArticle(1)">删除</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>使用 TypeScript 构建类型安全的 React 应用</strong></td>
+                                    <td><span class="badge bg-warning">草稿</span></td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editArticle(2, '使用 TypeScript 构建类型安全的 React 应用', 'draft', '从基础到高级...', ['TypeScript'])">编辑</button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteArticle(2)">删除</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面5: 文章编辑 ===== -->
+        <div id="edit-page" class="page">
+            <div class="container py-4">
+                <div style="background: white; border-radius: 12px; padding: 2rem; border: 1px solid #e2e8f0;">
+                    <h2 id="edit-page-title" style="font-weight: 700; margin-bottom: 1.5rem;">新建文章</h2>
+
+                    <form onsubmit="handleArticleSubmit(event)">
+                        <!-- 文章基本信息 -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">文章标题</label>
+                                <input type="text" name="title" class="form-control" placeholder="输入文章标题" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">文章状态</label>
+                                <select name="status" class="form-select">
+                                    <option value="draft">草稿</option>
+                                    <option value="published">已发布</option>
+                                    <option value="offline">离线</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 文章摘要 -->
+                        <div class="mb-3">
+                            <label class="form-label">文章摘要</label>
+                            <textarea name="summary" class="form-control" rows="2" placeholder="简短描述文章内容，SEO 优化"></textarea>
+                        </div>
+
+                        <!-- Markdown 编辑器 -->
+                        <div class="mb-3">
+                            <label class="form-label">文章内容</label>
+                            <div class="editor-container">
+                                <!-- 编辑器 -->
+                                <div class="editor-panel">
+                                    <div class="editor-header">
+                                        <i class="bi bi-pencil"></i> Markdown 编辑器
+                                    </div>
+                                    <div class="editor-toolbar">
+                                        <button type="button" class="toolbar-btn" title="加粗 (Ctrl+B)"><strong>B</strong></button>
+                                        <button type="button" class="toolbar-btn" title="斜体 (Ctrl+I)"><em>I</em></button>
+                                        <button type="button" class="toolbar-btn" title="标题"># H</button>
+                                        <button type="button" class="toolbar-btn" title="链接"><i class="bi bi-link-45deg"></i></button>
+                                        <button type="button" class="toolbar-btn" title="代码块"><i class="bi bi-code"></i></button>
+                                        <button type="button" class="toolbar-btn" title="列表"><i class="bi bi-list-ul"></i></button>
+                                        <button type="button" class="toolbar-btn" title="图片"><i class="bi bi-image"></i></button>
+                                    </div>
+                                    <textarea id="markdown-editor" class="editor-textarea" placeholder="支持 Markdown 语法
+
+## 标题
+**加粗** *斜体* `代码`
+
+- 列表项1
+- 列表项2
+
+[链接](https://example.com)
+
+\`\`\`javascript
+console.log('代码块')
+\`\`\`"># 快速开始
+
+## 介绍
+这是一个关于...
+
+## 核心内容
+主要讲解...
+
+## 最佳实践
+- 第一点
+- 第二点
+
+## 总结
+总体来说...</textarea>
+                                </div>
+
+                                <!-- 预览面板 -->
+                                <div class="editor-panel">
+                                    <div class="editor-header">
+                                        <i class="bi bi-eye"></i> 实时预览 (自动保存草稿)
+                                    </div>
+                                    <div class="preview-content">
+                                        <h1>快速开始</h1>
+                                        <h2>介绍</h2>
+                                        <p>这是一个关于...</p>
+                                        <h2>核心内容</h2>
+                                        <p>主要讲解...</p>
+                                        <h2>最佳实践</h2>
+                                        <ul>
+                                            <li>第一点</li>
+                                            <li>第二点</li>
+                                        </ul>
+                                        <h2>总结</h2>
+                                        <p>总体来说...</p>
+                                        <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+                                            <i class="bi bi-cloud-check"></i> 草稿已自动保存到本地
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 标签 -->
+                        <div class="mb-3">
+                            <label class="form-label">标签（最多5个）</label>
+                            <input type="text" name="tags" class="form-control" placeholder="输入标签，按逗号分隔">
+                        </div>
+
+                        <!-- 评论权限 -->
+                        <div class="mb-3">
+                            <label class="form-label">评论权限</label>
+                            <div style="background: #f8fafc; border-radius: 8px; padding: 1rem; border: 1px solid #e2e8f0;">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #0f172a;">允许读者评论</div>
+                                        <small style="color: #94a3b8;">读者可以在此文章下留言讨论</small>
+                                    </div>
+                                    <div>
+                                        <div class="form-check form-switch" style="margin: 0;">
+                                            <input class="form-check-input" type="checkbox" id="allowComments" checked style="cursor: pointer;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="saveDraft()">保存草稿</button>
+                            <button type="submit" class="btn btn-primary">发布</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="togglePreview()">预览</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="cancelEdit()">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面6: 搜索结果 ===== -->
+        <div id="search-page" class="page">
+            <div class="container py-4">
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <h2 style="font-weight: 700; margin-bottom: 1rem;">搜索结果</h2>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="搜索文章..." value="Vue">
+                            <button class="btn btn-primary" type="button">
+                                <i class="bi bi-search"></i> 搜索
+                            </button>
+                        </div>
+                        <small class="text-muted">找到 <strong>3</strong> 条结果 (耗时 0.12s)</small>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select">
+                            <option>相关度</option>
+                            <option>最新</option>
+                            <option>最热</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <!-- 搜索结果项1 -->
+                        <a href="javascript:showPage('detail')" class="article-card mb-3">
+                            <div class="card-body">
+                                <h5 class="article-title"><mark>Vue</mark> 3 Composition API 最佳实践</h5>
+                                <p class="article-summary">深入探讨 <mark>Vue</mark> 3 Composition API 的设计原理、最佳实践和常见陷阱。本文将通过实际代码示例展示...</p>
+                                <div class="mb-2">
+                                    <span class="tag">Vue.js</span>
+                                    <span class="tag">TypeScript</span>
+                                </div>
+                                <div class="article-meta">
+                                    <div class="author-info">
+                                        <div class="author-avatar">A</div>
+                                        <div>
+                                            <div class="author-name">Alice</div>
+                                            <small class="text-muted">2 天前</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-eye"></i> 234
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- 搜索结果项2 -->
+                        <a href="javascript:showPage('detail')" class="article-card mb-3">
+                            <div class="card-body">
+                                <h5 class="article-title"><mark>Vue</mark> Router 4 完整指南</h5>
+                                <p class="article-summary"><mark>Vue</mark> Router 4 是专为 <mark>Vue</mark> 3 设计的下一代路由库。本文详细讲解路由配置、导航守卫、懒加载等概念...</p>
+                                <div class="mb-2">
+                                    <span class="tag">Vue.js</span>
+                                    <span class="tag">路由</span>
+                                </div>
+                                <div class="article-meta">
+                                    <div class="author-info">
+                                        <div class="author-avatar">E</div>
+                                        <div>
+                                            <div class="author-name">Eve</div>
+                                            <small class="text-muted">1 周前</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-eye"></i> 567
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+
+                        <!-- 搜索结果项3 -->
+                        <a href="javascript:showPage('detail')" class="article-card mb-3">
+                            <div class="card-body">
+                                <h5 class="article-title">React vs <mark>Vue</mark>: 2026 年的比较分析</h5>
+                                <p class="article-summary">对比 React 和 <mark>Vue</mark> 在性能、学习曲线、生态等方面的差异，帮助你选择合适的框架...</p>
+                                <div class="mb-2">
+                                    <span class="tag">前端框架</span>
+                                    <span class="tag">对比分析</span>
+                                </div>
+                                <div class="article-meta">
+                                    <div class="author-info">
+                                        <div class="author-avatar">F</div>
+                                        <div>
+                                            <div class="author-name">Frank</div>
+                                            <small class="text-muted">3 周前</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-eye"></i> 890
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- 右侧边栏 -->
+                    <div class="col-md-4">
+                        <div style="background: white; border-radius: 8px; padding: 1.5rem; border: 1px solid #e2e8f0;">
+                            <h5 style="font-weight: 600; margin-bottom: 1rem;">热门标签</h5>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <span class="tag">Vue.js</span>
+                                <span class="tag">React</span>
+                                <span class="tag">TypeScript</span>
+                                <span class="tag">Node.js</span>
+                                <span class="tag">性能优化</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面7: 作者主页 ===== -->
+        <div id="author-page" class="page">
+            <div class="container py-4">
+                <!-- 作者头部卡片 -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 2rem; color: white; margin-bottom: 2rem;">
+                    <div class="row align-items-center">
+                        <div class="col-md-3 text-center">
+                            <div style="width: 100px; height: 100px; margin: 0 auto; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 3rem; border: 3px solid white;">
+                                A
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <h2 style="font-weight: 700; margin-bottom: 0.5rem;">Alice 的博客</h2>
+                            <p style="margin-bottom: 1rem; font-size: 1.1rem;">专注于 Vue.js 和现代前端开发</p>
+                            <div style="display: flex; gap: 2rem;">
+                                <div>
+                                    <strong style="font-size: 1.5rem;">12</strong>
+                                    <div style="font-size: 0.9rem;">文章</div>
+                                </div>
+                                <div>
+                                    <strong style="font-size: 1.5rem;">2.5K</strong>
+                                    <div style="font-size: 0.9rem;">粉丝</div>
+                                </div>
+                                <div>
+                                    <strong style="font-size: 1.5rem;">345</strong>
+                                    <div style="font-size: 0.9rem;">获赞</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 作者文章列表 -->
+                <div style="background: white; border-radius: 12px; padding: 2rem; border: 1px solid #e2e8f0;">
+                    <h3 style="font-weight: 700; margin-bottom: 1.5rem;">最新文章</h3>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <a href="javascript:showPage('detail')" class="article-card">
+                                <div class="card-body">
+                                    <h5 class="article-title">Vue 3 Composition API 最佳实践</h5>
+                                    <p class="article-summary">深入探讨 Vue 3 Composition API 的设计原理...</p>
+                                    <div class="mb-2">
+                                        <span class="tag">Vue.js</span>
+                                    </div>
+                                    <div class="article-meta">
+                                        <span><i class="bi bi-eye"></i> 234</span>
+                                        <span>2 天前</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="javascript:showPage('detail')" class="article-card">
+                                <div class="card-body">
+                                    <h5 class="article-title">TypeScript 类型系统深度讲解</h5>
+                                    <p class="article-summary">从基础到高级，掌握 TypeScript 的所有类型特性...</p>
+                                    <div class="mb-2">
+                                        <span class="tag">TypeScript</span>
+                                    </div>
+                                    <div class="article-meta">
+                                        <span><i class="bi bi-eye"></i> 456</span>
+                                        <span>5 天前</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面8: 标签页面 ===== -->
+        <div id="tags-page" class="page">
+            <div class="container py-4">
+                <h2 style="font-weight: 700; margin-bottom: 2rem;">热门标签</h2>
+
+                <div style="background: white; border-radius: 12px; padding: 2rem; border: 1px solid #e2e8f0;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1.5rem;">
+                        <a href="javascript:void(0)" style="text-align: center; text-decoration: none; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white;">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">Vue.js</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">45 篇文章</div>
+                        </a>
+                        <a href="javascript:void(0)" style="text-align: center; text-decoration: none; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white;">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">TypeScript</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">38 篇文章</div>
+                        </a>
+                        <a href="javascript:void(0)" style="text-align: center; text-decoration: none; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white;">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">Go</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">32 篇文章</div>
+                        </a>
+                        <a href="javascript:void(0)" style="text-align: center; text-decoration: none; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white;">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">React</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">28 篇文章</div>
+                        </a>
+                        <a href="javascript:void(0)" style="text-align: center; text-decoration: none; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white;">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">性能优化</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">24 篇文章</div>
+                        </a>
+                        <a href="javascript:void(0)" style="text-align: center; text-decoration: none; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white;">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">数据库</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">19 篇文章</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 页面9: 个人资料编辑 ===== -->
+        <div id="profile-page" class="page">
+            <div class="container py-4">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div style="background: white; border-radius: 12px; padding: 2rem; border: 1px solid #e2e8f0;">
+                            <h2 style="font-weight: 700; margin-bottom: 1.5rem;">编辑个人资料</h2>
+
+                            <form>
+                                <!-- 头像 -->
+                                <div class="mb-3 text-center">
+                                    <div style="width: 100px; height: 100px; margin: 0 auto 1rem; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), #7c3aed); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: 700;">
+                                        A
+                                    </div>
+                                    <input type="file" class="form-control" accept="image/*">
+                                    <small class="text-muted">建议尺寸：200×200 像素，不超过 2MB</small>
+                                </div>
+
+                                <!-- 用户名 -->
+                                <div class="mb-3">
+                                    <label class="form-label">用户名</label>
+                                    <input type="text" class="form-control" value="alice" disabled>
+                                    <small class="text-muted">用户名不支持修改</small>
+                                </div>
+
+                                <!-- 昵称 -->
+                                <div class="mb-3">
+                                    <label class="form-label">昵称</label>
+                                    <input type="text" class="form-control" value="Alice" placeholder="显示在公开资料中">
+                                </div>
+
+                                <!-- 个人介绍 -->
+                                <div class="mb-3">
+                                    <label class="form-label">个人介绍</label>
+                                    <textarea class="form-control" rows="4" placeholder="介绍一下你自己吧...">专注于 Vue.js 和现代前端开发</textarea>
+                                    <small class="text-muted" id="bio-count">0/200 字</small>
+                                </div>
+
+                                <!-- 邮箱 -->
+                                <div class="mb-3">
+                                    <label class="form-label">邮箱</label>
+                                    <input type="email" class="form-control" value="alice@example.com" disabled>
+                                    <small class="text-muted">邮箱已绑定，不支持修改</small>
+                                </div>
+
+                                <!-- 修改密码 -->
+                                <div class="mb-3">
+                                    <a href="javascript:void(0)" style="color: var(--primary-color);">修改密码</a>
+                                </div>
+
+                                <!-- 操作按钮 -->
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">保存修改</button>
+                                    <button type="button" class="btn btn-outline-secondary">取消</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ===== 用户状态管理 =====
+        let currentUser = null; // { id, username, role: 'reader' | 'author' | 'admin' }
+        let currentEditingArticle = null; // 当前编辑的文章
+
+        // 模拟文章数据库
+        const articleDatabase = {
+            1: {
+                id: 1,
+                title: 'Vue 3 Composition API 最佳实践',
+                content: '# 快速开始\n\n## 介绍\n这是一个关于...\n\n## 核心内容\n主要讲解...\n\n## 最佳实践\n- 第一点\n- 第二点\n\n## 总结\n总体来说...',
+                summary: '深入探讨 Vue 3 Composition API 的设计原理...',
+                status: 'published',
+                tags: ['Vue.js', 'TypeScript'],
+                authorId: 2, // bob (作者)
+                allowComments: true
+            },
+            2: {
+                id: 2,
+                title: '使用 TypeScript 构建类型安全的 React 应用',
+                content: '# React 和 TypeScript\n\n内容...',
+                summary: '从基础到高级...',
+                status: 'draft',
+                tags: ['TypeScript'],
+                authorId: 2, // bob (作者)
+                allowComments: true
+            }
+        };
+
+        // 当前显示的文章
+        let currentArticle = articleDatabase[1];
+
+        // 页面路由
+        function showPage(pageName) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // 显示指定页面
+            const pageId = pageName + '-page';
+            const page = document.getElementById(pageId);
+            if (page) {
+                page.classList.add('active');
+                window.scrollTo(0, 0);
+            }
+
+            // 关闭用户菜单
+            closeUserMenu();
+
+            // 显示/隐藏文章详情页的编辑按钮
+            if (pageName === 'detail') {
+                updateDetailPageEditButton();
+            }
+        }
+
+        // 更新文章详情页的编辑按钮显示状态
+        function updateDetailPageEditButton() {
+            const editBtn = document.getElementById('edit-article-btn');
+            if (editBtn) {
+                if (currentUser && (currentUser.id === currentArticle.authorId || currentUser.role === 'admin')) {
+                    editBtn.style.display = 'block';
+                } else {
+                    editBtn.style.display = 'none';
+                }
+            }
+        }
+
+        // 从文章详情页编辑文章
+        function editArticleFromDetail() {
+            editArticle(currentArticle.id, currentArticle.title, currentArticle.status, currentArticle.summary, currentArticle.tags);
+        }
+
+        // 编辑文章 - 进入编辑页面
+        function editArticle(articleId, title, status, summary, tags) {
+            currentEditingArticle = articleDatabase[articleId];
+
+            // 填充编辑表单
+            document.querySelector('[name="title"]').value = title;
+            document.querySelector('[name="status"]').value = status;
+            document.querySelector('[name="summary"]').value = summary;
+            document.querySelector('[name="tags"]').value = tags.join(', ');
+
+            // Markdown 编辑器
+            const editor = document.getElementById('markdown-editor');
+            editor.value = currentEditingArticle.content;
+            updatePreview(currentEditingArticle.content);
+
+            // 评论权限开关
+            document.getElementById('allowComments').checked = currentEditingArticle.allowComments;
+
+            // 页面标题
+            document.querySelector('#edit-page h2').textContent = '编辑文章';
+
+            showPage('edit');
+        }
+
+        // 删除文章
+        function deleteArticle(articleId) {
+            if (confirm('确定删除此文章吗？此操作不可撤销。')) {
+                alert('文章已删除！');
+                showPage('dashboard');
+            }
+        }
+
+        // ===== 用户菜单控制 =====
+        function toggleUserMenu() {
+            const dropdown = document.getElementById('user-dropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        function closeUserMenu() {
+            const dropdown = document.getElementById('user-dropdown');
+            dropdown.classList.remove('show');
+        }
+
+        // 点击页面其他地方关闭菜单
+        document.addEventListener('click', function(e) {
+            const userMenu = document.getElementById('user-menu');
+            if (userMenu && !userMenu.contains(e.target)) {
+                closeUserMenu();
+            }
+        });
+
+        // ===== 认证相关 =====
+        function login(username, role = 'reader') {
+            // 模拟登录
+            currentUser = {
+                id: 1,
+                username: username,
+                role: role // 'reader', 'author', 'admin'
+            };
+
+            // 更新导航栏
+            updateNavbar();
+
+            // 跳转首页
+            showPage('home');
+        }
+
+        function logout() {
+            currentUser = null;
+            updateNavbar();
+            showPage('home');
+        }
+
+        function upgradeToAuthor() {
+            if (currentUser) {
+                currentUser.role = 'author';
+                updateNavbar();
+            }
+        }
+
+        function upgradeToAdmin() {
+            if (currentUser) {
+                currentUser.role = 'admin';
+                updateNavbar();
+            }
+        }
+
+        // ===== 导航栏更新 =====
+        function updateNavbar() {
+            const authButtons = document.getElementById('auth-buttons');
+            const signupButton = document.getElementById('signup-button');
+            const userMenu = document.getElementById('user-menu');
+            const navbarAvatar = document.getElementById('navbar-avatar');
+            const navbarUsername = document.getElementById('navbar-username');
+
+            if (currentUser) {
+                // 已登录 - 隐藏登录/注册按钮，显示用户菜单
+                authButtons.style.display = 'none';
+                signupButton.style.display = 'none';
+                userMenu.style.display = 'block';
+
+                // 更新用户信息
+                navbarAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+                navbarUsername.textContent = currentUser.username;
+
+                // 根据角色显示/隐藏菜单项
+                const menuWriteArticle = document.getElementById('menu-write');
+                const menuDashboard = document.getElementById('menu-dashboard');
+                const menuAdmin = document.getElementById('menu-admin');
+
+                if (currentUser.role === 'reader') {
+                    // 普通读者 - 隐藏作者和管理员功能
+                    menuWriteArticle.style.display = 'none';
+                    menuDashboard.style.display = 'none';
+                    menuAdmin.style.display = 'none';
+                } else if (currentUser.role === 'author') {
+                    // 作者 - 显示作者功能，隐藏管理员功能
+                    menuWriteArticle.style.display = 'block';
+                    menuDashboard.style.display = 'block';
+                    menuAdmin.style.display = 'none';
+                } else if (currentUser.role === 'admin') {
+                    // 管理员 - 显示所有功能
+                    menuWriteArticle.style.display = 'block';
+                    menuDashboard.style.display = 'block';
+                    menuAdmin.style.display = 'block';
+                }
+            } else {
+                // 未登录 - 显示登录/注册按钮，隐藏用户菜单
+                authButtons.style.display = 'block';
+                signupButton.style.display = 'block';
+                userMenu.style.display = 'none';
+            }
+        }
+
+        // 实时预览 Markdown
+        const editor = document.getElementById('markdown-editor');
+        if (editor) {
+            editor.addEventListener('input', function() {
+                // 简单的 Markdown 预览
+                const content = this.value;
+                // 存储到 localStorage（草稿自动保存）
+                localStorage.setItem('article-draft', content);
+                updatePreview(content);
+            });
+
+            // 页面加载时恢复草稿
+            window.addEventListener('load', function() {
+                const saved = localStorage.getItem('article-draft');
+                if (saved) {
+                    editor.value = saved;
+                    updatePreview(saved);
+                }
+            });
+        }
+
+        function updatePreview(markdown) {
+            const preview = document.querySelector('.preview-content');
+            if (!preview) return;
+
+            // 简单的 Markdown 转换（生产环境使用专业的库如 marked）
+            let html = markdown
+                .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/\n/g, '<br>');
+
+            preview.innerHTML = html + '<p style="color: #94a3b8; font-size: 0.9rem; margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;"><i class="bi bi-cloud-check"></i> 草稿已自动保存到本地</p>';
+        }
+
+        // 工具栏快捷键
+        const toolbarBtns = document.querySelectorAll('.toolbar-btn');
+        toolbarBtns.forEach((btn, index) => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                insertMarkdown(index);
+            });
+        });
+
+        function insertMarkdown(action) {
+            const editor = document.getElementById('markdown-editor');
+            if (!editor) return;
+
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const selected = editor.value.substring(start, end);
+            let insert = '';
+
+            switch(action) {
+                case 0: // 加粗
+                    insert = `**${selected || '加粗文本'}**`;
+                    break;
+                case 1: // 斜体
+                    insert = `*${selected || '斜体文本'}*`;
+                    break;
+                case 2: // 标题
+                    insert = `\n## ${selected || '标题'}\n`;
+                    break;
+                case 3: // 链接
+                    insert = `[${selected || '链接文本'}](https://example.com)`;
+                    break;
+                case 4: // 代码块
+                    insert = `\n\`\`\`\n${selected || '代码'}\n\`\`\`\n`;
+                    break;
+                case 5: // 列表
+                    insert = `\n- ${selected || '列表项'}\n`;
+                    break;
+                case 6: // 图片
+                    insert = `![图片描述](https://example.com/image.jpg)`;
+                    break;
+            }
+
+            editor.value = editor.value.substring(0, start) + insert + editor.value.substring(end);
+            editor.dispatchEvent(new Event('input'));
+        }
+
+        // ===== 登录处理 =====
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const username = email.split('@')[0]; // 简单处理，提取邮箱前缀作为用户名
+            login(username, 'reader');
+        }
+
+        // ===== 注册处理 =====
+        function handleSignup(event) {
+            event.preventDefault();
+            const username = document.getElementById('signup-username').value;
+            // 模拟注册 - 直接以读者身份登录
+            login(username, 'reader');
+            alert('注册成功！已自动以读者身份登录。');
+        }
+
+        // ===== 文章编辑相关 =====
+        function saveDraft() {
+            const title = document.querySelector('[name="title"]').value;
+            const content = document.getElementById('markdown-editor').value;
+
+            if (!title || !content) {
+                alert('请填写标题和内容');
+                return;
+            }
+
+            alert('草稿已保存到本地！');
+        }
+
+        function handleArticleSubmit(event) {
+            event.preventDefault();
+
+            const title = document.querySelector('[name="title"]').value;
+            const content = document.getElementById('markdown-editor').value;
+            const status = document.querySelector('[name="status"]').value;
+
+            if (!title || !content) {
+                alert('请填写标题和内容');
+                return;
+            }
+
+            if (currentEditingArticle) {
+                alert('文章已更新！');
+            } else {
+                alert('文章已发布！');
+            }
+
+            showPage('dashboard');
+        }
+
+        function togglePreview() {
+            alert('预览功能演示');
+        }
+
+        function cancelEdit() {
+            if (confirm('确定放弃编辑吗？')) {
+                currentEditingArticle = null;
+                document.querySelector('#edit-page-title').textContent = '新建文章';
+                showPage('dashboard');
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            showPage('home');
+            updateNavbar();
+        });
+    </script>
+</body>
+</html>

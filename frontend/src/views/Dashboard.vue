@@ -33,6 +33,30 @@
       </el-card>
     </div>
 
+    <!-- 阅读趋势图 -->
+    <el-card class="chart-card">
+      <template #header>
+        <div class="chart-header">
+          <span>阅读趋势</span>
+          <el-button-group size="small">
+            <el-button
+              :type="timeRange === 'week' ? 'primary' : 'default'"
+              @click="timeRange = 'week'"
+            >
+              周
+            </el-button>
+            <el-button
+              :type="timeRange === 'month' ? 'primary' : 'default'"
+              @click="timeRange = 'month'"
+            >
+              月
+            </el-button>
+          </el-button-group>
+        </div>
+      </template>
+      <div id="trend-chart" style="height: 400px" />
+    </el-card>
+
     <!-- 文章列表 -->
     <el-card class="articles-card">
       <template #header>
@@ -114,13 +138,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import apiClient from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import * as echarts from 'echarts'
 
 const authStore = useAuthStore()
 const loading = ref(false)
+const trendLoading = ref(false)
 
 // 统计数据
 const stats = reactive({
@@ -129,6 +155,9 @@ const stats = reactive({
   totalLikes: 0,
   totalComments: 0,
 })
+
+// 趋势图数据
+const timeRange = ref<'week' | 'month'>('week')
 
 // 文章列表
 const articles = ref<any[]>([])
@@ -200,8 +229,131 @@ async function handleDelete(articleId: string) {
   }
 }
 
+async function loadTrendData() {
+  trendLoading.value = true
+  try {
+    const response = await apiClient.get('/article-stats/trend', {
+      params: {
+        time_range: timeRange.value, // 'week' 或 'month'
+        group_by: timeRange.value === 'week' ? 'hour' : 'day',
+      },
+    })
+    if (response.code === 1000) {
+      renderChart(response.data)
+    } else {
+      ElMessage.error(response.msg || '加载趋势数据失败')
+    }
+  } catch (error: any) {
+    console.error('Failed to load trend data:', error)
+    // 不显示错误提示，因为可能数据不足
+  } finally {
+    trendLoading.value = false
+  }
+}
+
+function renderChart(data: any) {
+  const chartDOM = document.getElementById('trend-chart') as HTMLElement
+  if (!chartDOM) return
+
+  const myChart = echarts.init(chartDOM)
+
+  // 模拟数据处理（如果后端返回格式不同，需调整）
+  const labels = data.labels || data.dates || []
+  const values = data.views || data.counts || []
+
+  const option = {
+    title: {
+      text: '',
+      textStyle: {
+        color: '#333',
+      },
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      borderColor: '#ccc',
+      textStyle: {
+        color: '#fff',
+      },
+    },
+    grid: {
+      left: '3%',
+      right: '3%',
+      bottom: '3%',
+      top: '5%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: labels,
+      boundaryGap: false,
+      axisLine: {
+        lineStyle: {
+          color: '#ddd',
+        },
+      },
+      axisLabel: {
+        color: '#666',
+        fontSize: 12,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: {
+        lineStyle: {
+          color: '#ddd',
+        },
+      },
+      axisLabel: {
+        color: '#666',
+        fontSize: 12,
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#eee',
+        },
+      },
+    },
+    series: [
+      {
+        name: '浏览数',
+        type: 'line',
+        data: values,
+        smooth: true,
+        lineStyle: {
+          color: '#409eff',
+          width: 2,
+        },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+            { offset: 1, color: 'rgba(64, 158, 255, 0)' },
+          ]),
+        },
+        itemStyle: {
+          color: '#409eff',
+          borderWidth: 2,
+          borderColor: '#fff',
+        },
+      },
+    ],
+  }
+  myChart.setOption(option)
+
+  // 响应式重绘
+  window.addEventListener('resize', () => {
+    myChart.resize()
+  })
+}
+
 onMounted(() => {
   loadArticles()
+  loadTrendData()
+})
+
+// 监听时间范围变化
+watch(() => timeRange.value, () => {
+  loadTrendData()
 })
 </script>
 
@@ -261,6 +413,18 @@ onMounted(() => {
 }
 
 .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.chart-card {
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;

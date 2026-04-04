@@ -37,14 +37,14 @@ services:
 
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: bluebell-app
     restart: unless-stopped
     ports:
       - "8084:8084"
     volumes:
-      - ./conf/dev.yaml:/app/conf/dev.yaml:ro
+      - ./backend/conf/dev.yaml:/app/conf/dev.yaml:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -60,7 +60,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app/
+      - ./backend:/app/
     depends_on:
       mysql:
         condition: service_healthy
@@ -68,6 +68,9 @@ services:
         condition: service_healthy
     profiles:
       - dev
+
+  # 前端 Nginx 服务（待配置）
+  # 使用 Vite + Vue 3 TypeScript 后续添加
 
 volumes:
   mysql_data:
