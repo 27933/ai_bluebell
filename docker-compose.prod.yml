@@ -1,0 +1,43 @@
+# 生产环境 docker-compose
+# 使用方式：docker-compose -f docker-compose.prod.yml up -d --build
+#
+# 前置条件（服务器上已有）：
+#   - mysql8  容器运行在 127.0.0.1:3306
+#   - redis   容器运行在 127.0.0.1:6379
+#
+# 网络模式：host（容器直接使用宿主机网络）
+#   - Nginx   监听 :80，代理 /api/* 到后端 :8084
+#   - Backend 监听 :8084，连接 127.0.0.1:3306 和 127.0.0.1:6379
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: bluebell-backend:latest
+    container_name: bluebell-backend-prod
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./backend/conf/prod.yaml:/app/conf/prod.yaml:ro   # 生产配置（含 DB/Redis 密码）
+      - ./uploads:/app/uploads                             # 持久化上传文件
+      - ./logs/backend:/app/logs                           # 持久化日志
+    command: ["./bluebell", "conf/prod.yaml"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8084/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: bluebell-frontend:latest
+    container_name: bluebell-frontend-prod
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./logs/nginx:/var/log/nginx                        # 持久化 Nginx 日志
+    depends_on:
+      - backend

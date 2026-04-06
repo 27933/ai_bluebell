@@ -1,0 +1,129 @@
+# 全量云部署 docker-compose（MySQL + Redis + Backend + Frontend 全部自包含）
+#
+# ─────────────────────────────────────────────────────────────
+#  本地测试
+#    docker-compose -f docker-compose.cloud.yml up -d --build
+#    访问：http://localhost:18080
+#
+#  测试完毕还原本地环境
+#    docker-compose -f docker-compose.cloud.yml down -v
+#      -v 参数同时删除所有 named volume（cloud_mysql_data / cloud_redis_data）
+#      本地的 mysql8 / redis / adminer / bluebell-backend 容器完全不受影响
+#
+#  京东云部署
+#    1. 将前端端口改为 80:80（见下方注释）
+#    2. 删除 MySQL / Redis 的 ports 映射（不对外暴露，安全）
+#    3. docker-compose -f docker-compose.cloud.yml up -d --build
+# ─────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MySQL ──────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: bluebell-cloud-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: bluebell
+    # 本地测试时暴露 13307 以便用 Adminer/Navicat 查看
+    # 云端部署时建议删除此 ports 段，不对外暴露数据库端口
+    ports:
+      - "13307:3306"
+    volumes:
+      - cloud_mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - bluebell-cloud-net
+
+  # ── Redis ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: bluebell-cloud-redis
+    restart: unless-stopped
+    command: redis-server --requirepass 123456 --appendonly yes
+    # 云端部署时建议删除此 ports 段
+    ports:
+      - "16380:6379"
+    volumes:
+      - cloud_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bluebell-cloud-net
+
+  # ── Backend ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: bluebell-backend:cloud
+    container_name: bluebell-cloud-backend
+    restart: unless-stopped
+    volumes:
+      - ./backend/conf/cloud.yaml:/app/conf/cloud.yaml:ro   # cloud 配置
+      - ./uploads:/app/uploads                               # 上传文件持久化
+      - ./logs/backend:/app/logs                             # 日志持久化
+    command: ["./bluebell", "conf/cloud.yaml"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8084/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - bluebell-cloud-net
+
+  # ── Frontend (Nginx) ───────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: bluebell-frontend:cloud
+    container_name: bluebell-cloud-frontend
+    restart: unless-stopped
+    ports:
+      # 本地测试：http://localhost:18080（避免与本地 adminer:8080 冲突）
+      - "18080:80"
+      # 云端部署时改为下面这行（注释掉上面那行）：
+      # - "80:80"
+    volumes:
+      - ./frontend/nginx.cloud.conf:/etc/nginx/conf.d/default.conf:ro   # bridge 网络版 nginx 配置
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - bluebell-cloud-net
+
+# ── Networks ───────────────────────────────────────────────────
+networks:
+  bluebell-cloud-net:
+    name: bluebell-cloud-net
+    driver: bridge
+
+# ── Volumes ────────────────────────────────────────────────────
+# 命名卷与本地 mysql_data / redis_data（docker-compose.yml 使用的）完全隔离
+# docker-compose -f docker-compose.cloud.yml down -v  可一次性清除所有 cloud 卷
+volumes:
+  cloud_mysql_data:
+    name: bluebell-cloud-mysql-data
+  cloud_redis_data:
+    name: bluebell-cloud-redis-data

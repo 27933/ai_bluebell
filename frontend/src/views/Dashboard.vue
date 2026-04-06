@@ -231,19 +231,17 @@ async function handleDelete(articleId: string) {
 
 async function loadTrendData() {
   try {
-    const response = await apiClient.get('/article-stats/trend', {
-      params: {
-        time_range: timeRange.value,
-        group_by: timeRange.value === 'week' ? 'hour' : 'day',
-      },
+    const response = await apiClient.get('/author/stats/trend', {
+      params: { days: timeRange.value === 'week' ? 7 : 30 },
     })
     if (response.code === 1000) {
       renderChart(response.data)
     } else {
-      console.error('加载趋势数据失败:', response.msg)
+      renderChart({ trend: [] })
     }
   } catch (error: any) {
     console.error('加载趋势数据出错:', error)
+    renderChart({ trend: [] })
   }
 }
 
@@ -253,8 +251,10 @@ function renderChart(data: any) {
 
   const myChart = echarts.init(chartDOM)
 
-  const labels = data.labels || data.dates || []
-  const values = data.views || data.counts || []
+  // API 返回格式：{ trend: [{label, value}, ...] }
+  const trendData = data.trend || []
+  const labels = trendData.map((item: any) => item.label)
+  const values = trendData.map((item: any) => item.value)
 
   const option = {
     tooltip: {
@@ -334,8 +334,8 @@ function renderChart(data: any) {
   })
 }
 
-onMounted(() => {
-  loadArticles()
+onMounted(async () => {
+  await loadArticles()
   loadTrendData()
 })
 

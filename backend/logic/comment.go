@@ -66,7 +66,7 @@ func CreateComment(p *models.ParamCreateComment) (*models.Comment, error) {
 }
 
 // GetCommentList 获取评论列表
-func GetCommentList(p *models.ParamCommentList) ([]*models.Comment, int64, error) {
+func GetCommentList(p *models.ParamCommentList) ([]*models.ApiComment, int64, error) {
 	// 参数验证
 	if p.Page < 1 {
 		p.Page = 1
@@ -112,14 +112,23 @@ func UpdateComment(id int64, userID int64, content string) error {
 
 // DeleteComment 删除评论
 func DeleteComment(id int64, userID int64) error {
-	// 检查评论是否存在且属于该用户
+	// 检查评论是否存在
 	comment, err := mysql.GetCommentById(id)
 	if err != nil {
 		return mysql.ErrorCommentNotExist
 	}
 
+	// 允许删除的条件：评论作者 OR 文章作者 OR 管理员
 	if comment.UserID != userID {
-		return errors.New("you can only delete your own comments")
+		// 检查是否是文章作者
+		article, err := mysql.GetArticleById(comment.ArticleID)
+		if err != nil || article.AuthorID != userID {
+			// 检查是否是管理员
+			user, err := mysql.GetUserById(userID)
+			if err != nil || user.Role != "admin" {
+				return errors.New("no permission to delete this comment")
+			}
+		}
 	}
 
 	// 软删除评论

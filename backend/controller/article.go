@@ -441,12 +441,10 @@ func GetArticleDetailHandler(c *gin.Context) {
 		return
 	}
 
-	// 3. 异步记录访问（带防刷机制）
-	go func() {
-		if err := logic.RecordArticleViewWithAntiCheat(id, userID, ip); err != nil {
-			zap.L().Error("RecordArticleViewWithAntiCheat failed", zap.Error(err))
-		}
-	}()
+	// 3. 同步记录访问，若是新访问则响应中的 view_count 同步 +1
+	if logic.TryRecordVisit(id, userID, ip) {
+		article.ViewCount++
+	}
 
 	// 4. 返回响应
 	ResponseSuccess(c, article)

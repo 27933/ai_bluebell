@@ -14,12 +14,12 @@ type Tag struct {
 
 // ApiTag 标签接口返回结构体
 type ApiTag struct {
-	ID           int64     `json:"id,string"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description,omitempty"`
-	Slug         string    `json:"slug,omitempty"`
-	ArticleCount int       `json:"article_count"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID           int64     `json:"id,string" db:"id"`
+	Name         string    `json:"name" db:"name"`
+	Description  string    `json:"description,omitempty" db:"description"`
+	Slug         string    `json:"slug,omitempty" db:"slug"`
+	ArticleCount int       `json:"article_count" db:"article_count"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 }
 
 // ParamCreateTag 创建标签请求参数

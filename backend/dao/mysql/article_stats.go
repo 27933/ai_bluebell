@@ -4,19 +4,9 @@ import (
 	"time"
 )
 
-// UpdateArticleView 更新文章访问量
+// UpdateArticleView 更新文章总访问量（article_visits 已记录明细，这里只更新汇总字段）
 func UpdateArticleView(articleId int64, date time.Time) error {
-	sqlStr := `INSERT INTO article_stats (article_id, date, views)
-		VALUES (?, ?, 1)
-		ON DUPLICATE KEY UPDATE views = views + 1`
-
-	_, err := db.Exec(sqlStr, articleId, date.Format("2006-01-02"))
-	if err != nil {
-		return err
-	}
-
-	// 同时更新文章总访问量
-	_, err = db.Exec("UPDATE articles SET view_count = view_count + 1 WHERE id = ?", articleId)
+	_, err := db.Exec("UPDATE articles SET view_count = view_count + 1 WHERE id = ?", articleId)
 	return err
 }
 

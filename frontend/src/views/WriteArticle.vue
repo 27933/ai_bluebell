@@ -36,13 +36,6 @@
             />
           </el-form-item>
 
-          <el-form-item label="状态">
-            <el-select v-model="form.status" placeholder="选择文章状态">
-              <el-option label="草稿" value="draft" />
-              <el-option label="已发布" value="published" />
-            </el-select>
-          </el-form-item>
-
           <el-form-item label="精选">
             <el-switch v-model="form.is_featured" />
           </el-form-item>
@@ -61,6 +54,18 @@
           <div :class="['tab', { active: editorMode === 'split' }]" @click="editorMode = 'split'">
             分屏
           </div>
+          <div class="tab-spacer" />
+          <button class="upload-img-btn" @click="triggerImageUpload" :disabled="imageUploading">
+            <i class="bi bi-image"></i>
+            {{ imageUploading ? '上传中...' : '插入图片' }}
+          </button>
+          <input
+            ref="imageInputRef"
+            type="file"
+            accept=".jpg,.jpeg,.png,.gif,.webp"
+            style="display:none"
+            @change="handleImageUpload"
+          />
         </div>
 
         <div class="editor-content">
@@ -126,6 +131,8 @@ const draftLoading = ref(false)
 const publishLoading = ref(false)
 const deleteLoading = ref(false)
 const draftStatus = ref('')
+const imageUploading = ref(false)
+const imageInputRef = ref<HTMLInputElement | null>(null)
 
 // 草稿自动保存
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
@@ -136,6 +143,41 @@ function renderMarkdown(content: string): string {
     return marked(content) as string
   } catch {
     return `<p>${content.replace(/\n/g, '<br>')}</p>`
+  }
+}
+
+function triggerImageUpload() {
+  imageInputRef.value?.click()
+}
+
+async function handleImageUpload(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+
+  imageUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post('/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    if (response.code === 1000) {
+      const url = response.data.url
+      const imageMarkdown = `![${file.name}](${url})`
+      // 插入到内容末尾（或光标位置）
+      form.content = form.content
+        ? form.content + '\n' + imageMarkdown
+        : imageMarkdown
+      ElMessage.success('图片上传成功')
+    } else {
+      ElMessage.error(response.msg || '上传失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '上传失败')
+  } finally {
+    imageUploading.value = false
+    // 清空 input，允许重复上传同一文件
+    if (imageInputRef.value) imageInputRef.value.value = ''
   }
 }
 
@@ -204,8 +246,36 @@ async function handleSaveDraft() {
 
   draftLoading.value = true
   try {
-    saveDraftToLocalStorage()
-    ElMessage.success('草稿已保存')
+    let response
+    if (isEdit.value) {
+      const articleId = route.params.id as string
+      response = await apiClient.put(`/author/articles/${articleId}`, {
+        title: form.title,
+        content: form.content,
+        summary: form.summary || form.content.substring(0, 100),
+        status: 'draft',
+        is_featured: form.is_featured,
+        allow_comment: true,
+      })
+    } else {
+      response = await apiClient.post('/articles', {
+        title: form.title,
+        content: form.content,
+        summary: form.summary || form.content.substring(0, 100),
+        status: 'draft',
+        is_featured: form.is_featured,
+        allow_comment: true,
+      })
+    }
+
+    if (response.code === 1000) {
+      saveDraftToLocalStorage()
+      ElMessage.success('草稿已保存')
+    } else {
+      ElMessage.error(response.msg || '保存失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '保存失败')
   } finally {
     draftLoading.value = false
   }
@@ -232,17 +302,19 @@ async function handlePublish() {
         title: form.title,
         content: form.content,
         summary: form.summary || form.content.substring(0, 100),
-        status: form.status,
+        status: 'published',
         is_featured: form.is_featured,
+        allow_comment: true,
       })
     } else {
-      // 创建新文章
+      // 创建新文章，点"发布"按钮强制 published
       response = await apiClient.post('/articles', {
         title: form.title,
         content: form.content,
         summary: form.summary || form.content.substring(0, 100),
-        status: form.status,
+        status: 'published',
         is_featured: form.is_featured,
+        allow_comment: true,
       })
     }
 
@@ -369,12 +441,39 @@ onBeforeUnmount(() => {
 
 .editor-tabs {
   display: flex;
+  align-items: center;
   background-color: #f5f7fa;
   border-bottom: 1px solid #eee;
 }
 
-.tab {
+.tab-spacer {
   flex: 1;
+}
+
+.upload-img-btn {
+  margin-right: 10px;
+  padding: 6px 14px;
+  font-size: 13px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: white;
+  color: #606266;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.upload-img-btn:hover:not(:disabled) {
+  color: #409eff;
+  border-color: #409eff;
+}
+
+.upload-img-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tab {
   padding: 15px 20px;
   text-align: center;
   cursor: pointer;

@@ -10,6 +10,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// OptionalJWTMiddleware 可选JWT中间件：token 存在且合法则解析写入 context，否则直接放行
+// 用于公开路由需要区分登录/未登录用户的场景（如浏览量去重）
+func OptionalJWTMiddleware() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				mc, err := jwt.ParseToken(parts[1])
+				if err == nil {
+					c.Set(controller.CtxUserIDKey, mc.UserID)
+				}
+			}
+		}
+		c.Next()
+	}
+}
+
 // JWTAuthMiddleware 基于JWT的认证中间件
 func JWTAuthMiddleware() func(c *gin.Context) {
 	return func(c *gin.Context) {

@@ -10,18 +10,30 @@
               type="text"
               class="form-control"
               placeholder="搜索文章..."
+              @keyup.enter="handleSearch"
             />
+            <button v-if="isSearchMode" class="btn btn-outline-secondary" type="button" @click="clearSearch">
+              <i class="bi bi-x"></i>
+            </button>
             <button class="btn btn-primary" type="button" @click="handleSearch">
               <i class="bi bi-search"></i> 搜索
             </button>
           </div>
         </div>
         <div class="col-md-4">
-          <select v-model="sortBy" class="form-select">
-            <option value="hot">按热度排序</option>
-            <option value="latest">按时间排序</option>
-            <option value="comments">按评论排序</option>
-          </select>
+          <div class="d-flex gap-2">
+            <select v-model="sortBy" class="form-select" @change="currentPage = 1; loadArticles()">
+              <option value="hot">按热度排序</option>
+              <option value="latest">按时间排序</option>
+              <option value="comments">按评论排序</option>
+            </select>
+            <select v-model.number="pageSize" class="form-select page-size-select" @change="currentPage = 1; loadArticles()">
+              <option :value="10">10条/页</option>
+              <option :value="20">20条/页</option>
+              <option :value="50">50条/页</option>
+              <option :value="100">100条/页</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -30,13 +42,31 @@
         <div class="d-flex gap-2 flex-wrap">
           <span
             v-for="tag in popularTags"
-            :key="tag"
+            :key="tag.id"
             class="tag"
-            @click="searchQuery = tag"
+            :class="{ 'tag-active': selectedTag === tag.name }"
+            @click="handleTagClick(tag.name)"
           >
-            {{ tag }}
+            {{ tag.name }}
+          </span>
+          <span
+            v-if="selectedTag"
+            class="tag tag-clear"
+            @click="selectedTag = ''; loadArticles()"
+          >
+            清除筛选 &times;
           </span>
         </div>
+      </div>
+
+      <!-- 当前筛选状态 -->
+      <div v-if="isSearchMode || selectedTag" class="filter-status mb-3">
+        <span v-if="isSearchMode">
+          搜索 "<strong>{{ searchQuery }}</strong>" 的结果，共 {{ total }} 条
+        </span>
+        <span v-else-if="selectedTag">
+          标签 "<strong>{{ selectedTag }}</strong>" 下的文章，共 {{ total }} 条
+        </span>
       </div>
 
       <!-- 文章列表 -->
@@ -62,10 +92,10 @@
               <div class="mb-2">
                 <span
                   v-for="tag in (article.tags || []).slice(0, 2)"
-                  :key="tag"
+                  :key="tag.id || tag.name"
                   class="tag"
                 >
-                  {{ tag }}
+                  {{ tag.name || tag }}
                 </span>
               </div>
               <div class="article-meta">
@@ -129,7 +159,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import apiClient from '../services/api'
 
 interface Author {
@@ -137,12 +168,17 @@ interface Author {
   username: string
 }
 
+interface Tag {
+  id: string
+  name: string
+}
+
 interface Article {
   id: string
   title: string
   summary: string
   author: Author
-  tags?: string[]
+  tags?: Tag[]
   view_count: number
   like_count: number
   comment_count: number
@@ -152,18 +188,13 @@ interface Article {
 const articles = ref<Article[]>([])
 const loading = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(6)
+const pageSize = ref(20)
 const total = ref(0)
 const searchQuery = ref('')
 const sortBy = ref('hot')
+const selectedTag = ref('')
 
-const popularTags = [
-  'Vue.js',
-  'TypeScript',
-  '后端开发',
-  '数据库',
-  '性能优化',
-]
+const popularTags = ref<Tag[]>([])
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1)
 
@@ -184,15 +215,30 @@ function timeAgo(dateString: string): string {
   return `${Math.floor(days / 7)} 周前`
 }
 
+function getSortParam(sort: string): string {
+  const sortMap: Record<string, string> = {
+    hot: 'popular',
+    latest: 'time',
+    comments: 'time', // API 不支持按评论排序，降级为时间排序
+  }
+  return sortMap[sort] || 'time'
+}
+
 async function loadArticles() {
   loading.value = true
   try {
+    const params: Record<string, any> = {
+      page: currentPage.value,
+      size: pageSize.value,
+      status: 'published',
+      sort: getSortParam(sortBy.value),
+    }
+    // 如果选择了标签，添加标签筛选
+    if (selectedTag.value) {
+      params.tag = selectedTag.value
+    }
     const response = await apiClient.get('/articles', {
-      params: {
-        page: currentPage.value,
-        size: pageSize.value,
-        status: 'published',
-      },
+      params,
     })
 
     if (response.code === 1000) {
@@ -208,39 +254,108 @@ async function loadArticles() {
   }
 }
 
-function handleSearch() {
-  if (searchQuery.value.trim()) {
-    // 暂时在当前列表中过滤搜索结果
-    // TODO: 调用后端搜索 API
-    console.log('搜索关键词:', searchQuery.value)
+async function loadTags() {
+  try {
+    const response = await apiClient.get('/tags')
+    if (response.code === 1000) {
+      // API 返回格式是 data: [...] 或 data: { list: [...] }
+      const tagList = Array.isArray(response.data) ? response.data : (response.data.list || [])
+      // 只取前10个标签
+      popularTags.value = tagList.slice(0, 10)
+    }
+  } catch (error) {
+    console.error('加载标签失败:', error)
   }
 }
 
-onMounted(() => {
+function handleTagClick(tagName: string) {
+  // 如果点击已选中的标签，取消选中
+  if (selectedTag.value === tagName) {
+    selectedTag.value = ''
+  } else {
+    selectedTag.value = tagName
+  }
+  currentPage.value = 1
   loadArticles()
+}
+
+const isSearchMode = ref(false)
+
+async function handleSearch() {
+  if (!searchQuery.value.trim()) {
+    // 如果搜索框为空，清除搜索模式，重新加载普通列表
+    isSearchMode.value = false
+    loadArticles()
+    return
+  }
+
+  // 搜索时清除标签筛选
+  selectedTag.value = ''
+  isSearchMode.value = true
+  loading.value = true
+  currentPage.value = 1
+
+  try {
+    const response = await apiClient.get('/articles/search', {
+      params: {
+        keyword: searchQuery.value,
+        page: currentPage.value,
+        size: pageSize.value,
+      },
+    })
+
+    if (response.code === 1000) {
+      articles.value = response.data.list || []
+      total.value = response.data.total || 0
+    } else {
+      console.error('搜索失败:', response.msg)
+    }
+  } catch (error: any) {
+    console.error('搜索失败:', error.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  isSearchMode.value = false
+  currentPage.value = 1
+  loadArticles()
+}
+
+const route = useRoute()
+
+onMounted(() => {
+  // 从 URL 读取标签参数
+  const tagFromUrl = route.query.tag as string
+  if (tagFromUrl) {
+    selectedTag.value = tagFromUrl
+  }
+  loadArticles()
+  loadTags()
+})
+
+// 监听路由变化，支持从标签页跳转过来
+watch(() => route.query.tag, (newTag) => {
+  if (newTag && newTag !== selectedTag.value) {
+    selectedTag.value = newTag as string
+    currentPage.value = 1
+    loadArticles()
+  }
 })
 </script>
 
 <style scoped>
-:root,
-:host {
-  --primary-color: #2563eb;
-  --secondary-color: #64748b;
-  --danger-color: #ef4444;
-}
-
 .page-wrapper {
   background-color: #f8fafc;
   min-height: 100%;
   padding: 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 
-.container {
-  max-width: 1140px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  width: 100%;
-}
+/* 使用 Bootstrap 默认 .container 响应式断点，和原型一致 */
 
 .py-4 {
   padding-top: 2rem;
@@ -295,6 +410,11 @@ onMounted(() => {
   cursor: pointer !important;
 }
 
+.page-size-select {
+  max-width: 120px !important;
+  flex-shrink: 0 !important;
+}
+
 /* 按钮 */
 .btn {
   padding: 0.75rem 1.25rem !important;
@@ -313,15 +433,15 @@ onMounted(() => {
 }
 
 .btn-primary {
-  background-color: #2563eb !important;
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
   color: white !important;
-  border: none !important;
 }
 
 .btn-primary:hover {
   background-color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
 }
 
 /* 标签 */
@@ -341,6 +461,21 @@ onMounted(() => {
 
 .tag:hover {
   background-color: var(--primary-color);
+  color: white;
+}
+
+.tag-active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.tag-clear {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.tag-clear:hover {
+  background-color: #dc2626;
   color: white;
 }
 
@@ -487,6 +622,14 @@ onMounted(() => {
 
 .justify-content-center {
   justify-content: center;
+}
+
+.filter-status {
+  background-color: #eef2ff;
+  color: var(--primary-color);
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
 }
 
 .empty-state {

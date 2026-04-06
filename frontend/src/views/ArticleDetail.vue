@@ -6,9 +6,9 @@
         <h1 class="article-title">{{ article.title }}</h1>
 
         <div class="author-info">
-          <div class="author-avatar">{{ getInitial(article.author_id) }}</div>
+          <div class="author-avatar">{{ getInitial(article.author?.nickname || article.author?.username) }}</div>
           <div>
-            <div class="author-name">{{ article.author || 'Unknown' }}</div>
+            <div class="author-name">{{ article.author?.nickname || article.author?.username || 'Unknown' }}</div>
             <small class="text-muted">发布于 {{ formatDate(article.created_at) }}</small>
           </div>
         </div>
@@ -22,7 +22,7 @@
 
       <!-- 文章内容 -->
       <div class="article-body">
-        <div class="article-text">{{ article.content }}</div>
+        <div class="article-text markdown-body" v-html="renderMarkdown(article.content)" />
       </div>
 
       <!-- 操作按钮 -->
@@ -41,6 +41,9 @@
             <i class="bi bi-pencil"></i> 编辑
           </button>
         </router-link>
+        <button v-if="canDelete" class="btn btn-outline btn-danger" @click="handleDeleteArticle">
+          <i class="bi bi-trash"></i> 删除
+        </button>
       </div>
 
       <div class="divider"></div>
@@ -67,25 +70,95 @@
         </div>
 
         <!-- 评论列表 -->
-        <div v-if="comments.length === 0 && authStore.isLoggedIn" class="empty-state">
+        <div v-if="topLevelComments.length === 0 && authStore.isLoggedIn" class="empty-state">
           <p>暂无评论，成为第一个评论者吧！</p>
         </div>
 
-        <div v-if="comments.length === 0 && !authStore.isLoggedIn" class="empty-state">
+        <div v-if="topLevelComments.length === 0 && !authStore.isLoggedIn" class="empty-state">
           <p>请 <router-link to="/login">登录</router-link> 后发表评论</p>
         </div>
 
         <div v-else class="comments-list">
-          <div v-for="comment in comments" :key="comment.id" class="comment">
-            <div class="comment-author">
-              <div class="author-avatar-sm">{{ getInitial(comment.user_id) }}</div>
-              <div>
-                <div class="author-name">{{ comment.user_name || '匿名用户' }}</div>
-                <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
+          <div v-for="comment in topLevelComments" :key="comment.id" class="comment">
+            <!-- 墓碑：已删除但有回复的评论 -->
+            <template v-if="comment.status === 'deleted'">
+              <div class="comment-deleted">
+                <i class="bi bi-slash-circle"></i> 该评论已被删除
+              </div>
+            </template>
+            <template v-else>
+              <div class="comment-author">
+                <div class="author-avatar-sm">{{ getInitial(comment.author?.nickname || comment.author?.username) }}</div>
+                <div class="comment-author-info">
+                  <div class="author-name">{{ comment.author?.nickname || comment.author?.username || '匿名用户' }}</div>
+                  <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
+                </div>
+              </div>
+              <div class="comment-content">{{ comment.content }}</div>
+              <div class="comment-actions">
+                <a
+                  v-if="authStore.isLoggedIn"
+                  href="javascript:void(0)"
+                  class="action-link"
+                  @click="toggleReply(comment.id)"
+                >
+                  <i class="bi bi-reply"></i> 回复
+                </a>
+                <a
+                  v-if="canDeleteComment(comment)"
+                  href="javascript:void(0)"
+                  class="action-link danger"
+                  @click="handleDeleteComment(comment.id)"
+                >
+                  <i class="bi bi-trash"></i> 删除
+                </a>
+              </div>
+            </template>
+
+            <!-- 回复表单 -->
+            <div v-if="replyingTo === comment.id" class="reply-form">
+              <textarea
+                v-model="replyContent"
+                class="form-control"
+                rows="2"
+                :placeholder="`回复 @${comment.author?.nickname || comment.author?.username}...`"
+                autofocus
+              />
+              <div class="reply-form-actions">
+                <button
+                  class="btn btn-primary btn-sm"
+                  @click="handleSubmitReply(comment.id)"
+                  :disabled="commentLoading"
+                >
+                  {{ commentLoading ? '发送中...' : '发送回复' }}
+                </button>
+                <button class="btn btn-outline btn-sm" @click="replyingTo = null">取消</button>
               </div>
             </div>
-            <div class="comment-content">{{ comment.content }}</div>
-            <small><a href="javascript:void(0)">回复</a></small>
+
+            <!-- 嵌套回复 -->
+            <div v-if="getReplies(comment.id).length > 0" class="replies-list">
+              <div v-for="reply in getReplies(comment.id)" :key="reply.id" class="comment reply-comment">
+                <div class="comment-author">
+                  <div class="author-avatar-sm">{{ getInitial(reply.author?.nickname || reply.author?.username) }}</div>
+                  <div class="comment-author-info">
+                    <div class="author-name">{{ reply.author?.nickname || reply.author?.username || '匿名用户' }}</div>
+                    <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
+                  </div>
+                </div>
+                <div class="comment-content">{{ reply.content }}</div>
+                <div class="comment-actions">
+                  <a
+                    v-if="canDeleteComment(reply)"
+                    href="javascript:void(0)"
+                    class="action-link danger"
+                    @click="handleDeleteComment(reply.id)"
+                  >
+                    <i class="bi bi-trash"></i> 删除
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -103,19 +176,31 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { marked } from 'marked'
 import apiClient from '../services/api'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
 const commentLoading = ref(false)
 const isLiked = ref(false)
+const replyingTo = ref<string | null>(null)
+const replyContent = ref('')
 
-function getInitial(id?: string): string {
-  if (!id) return '？'
-  return String(id).charAt(0).toUpperCase()
+function getInitial(name?: string): string {
+  if (!name) return '？'
+  return name.charAt(0).toUpperCase()
+}
+
+interface Author {
+  id: string
+  username: string
+  nickname?: string
+  avatar?: string
 }
 
 interface Article {
@@ -127,12 +212,15 @@ interface Article {
   comment_count: number
   created_at: string
   author_id?: string
+  author?: Author
 }
 
 interface Comment {
   id: string
   content: string
-  user_name?: string
+  status?: string
+  author?: Author
+  parent_id?: string | null
   created_at: string
 }
 
@@ -143,13 +231,51 @@ const newComment = reactive({
   content: '',
 })
 
+const topLevelComments = computed(() =>
+  comments.value.filter((c) => !c.parent_id)
+)
+
+function getReplies(parentId: string): Comment[] {
+  return comments.value.filter((c) => c.parent_id === parentId)
+}
+
+function canDeleteComment(comment: Comment): boolean {
+  if (!authStore.isLoggedIn || !authStore.user) return false
+  const uid = authStore.user.id
+  const isCommentAuthor = comment.author?.id === uid
+  // API 返回顶层 author_id，不是嵌套 author.id
+  const isArticleAuthor =
+    article.value?.author_id === uid &&
+    (authStore.user.role === 'author' || authStore.user.role === 'admin')
+  const isAdmin = authStore.user.role === 'admin'
+  return isCommentAuthor || isArticleAuthor || isAdmin
+}
+
+function toggleReply(commentId: string) {
+  if (replyingTo.value === commentId) {
+    replyingTo.value = null
+  } else {
+    replyingTo.value = commentId
+    replyContent.value = ''
+  }
+}
+
 const canEdit = computed(() => {
-  return (
-    article.value &&
-    authStore.isLoggedIn &&
-    (authStore.user?.role === 'author' || authStore.user?.role === 'admin')
-  )
+  if (!article.value || !authStore.isLoggedIn || !authStore.user) return false
+  const uid = authStore.user.id
+  return article.value.author_id === uid || authStore.user.role === 'admin'
 })
+
+const canDelete = computed(() => canEdit.value)
+
+function renderMarkdown(content: string): string {
+  if (!content) return ''
+  try {
+    return marked(content) as string
+  } catch {
+    return `<p>${content.replace(/\n/g, '<br>')}</p>`
+  }
+}
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString('zh-CN')
@@ -194,7 +320,7 @@ async function loadComments() {
 
 async function handleLike() {
   if (!authStore.isLoggedIn) {
-    alert('请先登录')
+    ElMessage.warning('请先登录')
     return
   }
 
@@ -202,13 +328,13 @@ async function handleLike() {
     if (isLiked.value) {
       await apiClient.delete('/likes', {
         params: {
-          target_id: article.value?.id,
+          target_id: Number(article.value?.id),
           target_type: 'article',
         },
       })
     } else {
       await apiClient.post('/likes', {
-        target_id: article.value?.id,
+        target_id: Number(article.value?.id),
         target_type: 'article',
       })
     }
@@ -219,6 +345,89 @@ async function handleLike() {
     }
   } catch (error: any) {
     console.error('操作失败:', error)
+  }
+}
+
+async function handleDeleteComment(commentId: string) {
+  try {
+    await ElMessageBox.confirm('确定要删除这条评论吗？', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return // 用户取消
+  }
+
+  try {
+    const response = await apiClient.delete(`/comments/${commentId}`)
+    if (response.code === 1000) {
+      ElMessage.success('评论已删除')
+      // 重新拉取评论列表，让后端决定删除评论是否需要墓碑展示
+      await loadComments()
+      if (article.value) {
+        article.value.comment_count = Math.max(0, article.value.comment_count - 1)
+      }
+    } else {
+      ElMessage.error(response.msg || '删除失败')
+    }
+  } catch (error: any) {
+    ElMessage.error('删除失败：' + (error.message || '未知错误'))
+  }
+}
+
+async function handleDeleteArticle() {
+  try {
+    await ElMessageBox.confirm('确定要删除这篇文章吗？此操作不可撤销。', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  try {
+    const response = await apiClient.delete(`/author/articles/${article.value?.id}`)
+    if (response.code === 1000) {
+      ElMessage.success('文章已删除')
+      router.push('/')
+    } else {
+      ElMessage.error(response.msg || '删除失败')
+    }
+  } catch (error: any) {
+    ElMessage.error('删除失败：' + (error.message || '未知错误'))
+  }
+}
+
+async function handleSubmitReply(parentId: string) {
+  if (!replyContent.value.trim()) {
+    ElMessage.warning('请输入回复内容')
+    return
+  }
+
+  commentLoading.value = true
+  try {
+    const response = await apiClient.post('/comments', {
+      article_id: Number(article.value?.id),
+      parent_id: Number(parentId),
+      content: replyContent.value,
+    })
+
+    if (response.code === 1000) {
+      ElMessage.success('回复成功')
+      replyContent.value = ''
+      replyingTo.value = null
+      await loadComments()
+      if (article.value) {
+        article.value.comment_count += 1
+      }
+    } else {
+      ElMessage.error(response.msg || '回复失败')
+    }
+  } catch (error: any) {
+    ElMessage.error('回复失败：' + (error.message || '未知错误'))
+  } finally {
+    commentLoading.value = false
   }
 }
 
@@ -243,7 +452,7 @@ async function loadLikeStatus() {
 
 async function handleSubmitComment() {
   if (!newComment.content.trim()) {
-    alert('请输入评论内容')
+    ElMessage.warning('请输入评论内容')
     return
   }
 
@@ -251,22 +460,22 @@ async function handleSubmitComment() {
 
   try {
     const response = await apiClient.post('/comments', {
-      article_id: article.value?.id,
+      article_id: Number(article.value?.id),
       content: newComment.content,
     })
 
     if (response.code === 1000) {
-      alert('评论发表成功')
+      ElMessage.success('评论发表成功')
       newComment.content = ''
-      loadComments()
+      await loadComments()
       if (article.value) {
         article.value.comment_count += 1
       }
     } else {
-      alert(response.msg || '发表失败')
+      ElMessage.error(response.msg || '发表失败')
     }
   } catch (error: any) {
-    alert('发表失败：' + (error.message || '未知错误'))
+    ElMessage.error('发表失败：' + (error.message || '未知错误'))
   } finally {
     commentLoading.value = false
   }
@@ -370,9 +579,67 @@ onMounted(() => {
   color: var(--text-primary);
   line-height: 1.8;
   font-size: 1.05rem;
-  white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Markdown 渲染样式（:deep 穿透 scoped） */
+:deep(.markdown-body h1),
+:deep(.markdown-body h2),
+:deep(.markdown-body h3),
+:deep(.markdown-body h4),
+:deep(.markdown-body h5),
+:deep(.markdown-body h6) {
+  margin: 1.2em 0 0.6em;
+  font-weight: 600;
+  line-height: 1.4;
+}
+:deep(.markdown-body h1) { font-size: 1.8rem; }
+:deep(.markdown-body h2) { font-size: 1.5rem; }
+:deep(.markdown-body h3) { font-size: 1.25rem; }
+:deep(.markdown-body p)  { margin: 0.8em 0; }
+:deep(.markdown-body img) {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.5em 0;
+}
+:deep(.markdown-body code) {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+:deep(.markdown-body pre) {
+  background: #f3f4f6;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+:deep(.markdown-body pre code) {
+  background: none;
+  padding: 0;
+}
+:deep(.markdown-body blockquote) {
+  border-left: 4px solid #ddd;
+  padding-left: 1em;
+  color: #666;
+  margin: 0.8em 0;
+}
+:deep(.markdown-body ul),
+:deep(.markdown-body ol) {
+  padding-left: 1.5em;
+  margin: 0.8em 0;
+}
+:deep(.markdown-body hr) {
+  border: none;
+  border-top: 2px solid #d1d5db;
+  margin: 1.5em 0;
+}
+:deep(.markdown-body a) {
+  color: #409eff;
+  text-decoration: none;
+}
+:deep(.markdown-body a:hover) { text-decoration: underline; }
 
 /* 操作按钮 */
 .article-actions {
@@ -420,6 +687,16 @@ onMounted(() => {
 
 .btn-outline:hover {
   background: var(--bg-light);
+}
+
+.btn-danger {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.btn-danger:hover {
+  background: #dc3545;
+  color: white;
 }
 
 /* 分割线 */
@@ -513,13 +790,75 @@ onMounted(() => {
   margin-bottom: 0.5rem;
 }
 
-.comment small a {
-  color: var(--primary-color);
-  text-decoration: none;
+.comment-deleted {
+  color: var(--text-secondary, #999);
+  font-style: italic;
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
 }
 
-.comment small a:hover {
-  text-decoration: underline;
+.comment-author-info {
+  flex: 1;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
+.action-link {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: color 0.2s;
+}
+
+.action-link:hover {
+  color: var(--primary-color);
+}
+
+.action-link.danger:hover {
+  color: #dc2626;
+}
+
+.reply-form {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.reply-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.replies-list {
+  margin-top: 0.75rem;
+  margin-left: 2.5rem;
+  border-left: 2px solid var(--border-color);
+  padding-left: 1rem;
+}
+
+.reply-comment {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.reply-comment:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .empty-state {

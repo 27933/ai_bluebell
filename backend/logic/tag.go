@@ -11,11 +11,11 @@ import (
 	"go.uber.org/zap"
 )
 
-// GetAllTags 获取所有标签
-func GetAllTags() ([]*models.Tag, error) {
-	tags, err := mysql.GetAllTags()
+// GetAllTags 获取所有标签（按文章数量降序排序）
+func GetAllTags() ([]*models.ApiTag, error) {
+	tags, err := mysql.GetTagStats()
 	if err != nil {
-		zap.L().Error("mysql.GetAllTags() failed", zap.Error(err))
+		zap.L().Error("mysql.GetTagStats() failed", zap.Error(err))
 		return nil, err
 	}
 	return tags, nil

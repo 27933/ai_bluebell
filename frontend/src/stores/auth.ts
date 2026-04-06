@@ -27,11 +27,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setUser(newUser: User) {
     user.value = newUser
+    localStorage.setItem('user', JSON.stringify(newUser))
   }
 
   function setToken(newToken: Token) {
     token.value = newToken
-    // 保存到 localStorage
     localStorage.setItem('token', JSON.stringify(newToken))
   }
 
@@ -39,15 +39,24 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
 
   function loadTokenFromStorage() {
-    const stored = localStorage.getItem('token')
-    if (stored) {
+    const storedToken = localStorage.getItem('token')
+    if (storedToken) {
       try {
-        token.value = JSON.parse(stored)
+        token.value = JSON.parse(storedToken)
       } catch (e) {
         console.error('Failed to parse token from storage', e)
+      }
+    }
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      try {
+        user.value = JSON.parse(storedUser)
+      } catch (e) {
+        console.error('Failed to parse user from storage', e)
       }
     }
   }

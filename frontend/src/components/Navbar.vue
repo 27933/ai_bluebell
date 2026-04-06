@@ -10,9 +10,6 @@
         <router-link to="/" class="nav-item">
           <a class="nav-link">首页</a>
         </router-link>
-        <router-link to="/search" class="nav-item">
-          <a class="nav-link">搜索</a>
-        </router-link>
         <router-link to="/tags" class="nav-item">
           <a class="nav-link">标签</a>
         </router-link>
@@ -28,22 +25,20 @@
         </template>
 
         <!-- 已登录状态 - 用户菜单 -->
-        <div v-else class="nav-item user-menu" @mouseleave="closeUserMenu">
+        <div v-else class="nav-item user-menu">
           <button class="user-menu-toggle" @click="toggleUserMenu">
             <div class="user-avatar">{{ getInitial(authStore.user?.username) }}</div>
             <span>{{ authStore.user?.username }}</span>
             <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
           </button>
 
-          <div v-show="userMenuOpen" class="user-dropdown">
+          <div v-show="userMenuOpen" class="user-dropdown" @mouseenter="cancelClose" @mouseleave="delayClose">
             <!-- 作者菜单项 -->
-            <router-link to="/profile" class="dropdown-link">
-              <i class="bi bi-person"></i> 我的主页
-            </router-link>
             <router-link
               v-if="authStore.user?.role === 'author' || authStore.user?.role === 'admin'"
               to="/write"
               class="dropdown-link"
+              @click="userMenuOpen = false"
             >
               <i class="bi bi-pencil"></i> 写文章
             </router-link>
@@ -51,12 +46,13 @@
               v-if="authStore.user?.role === 'author' || authStore.user?.role === 'admin'"
               to="/dashboard"
               class="dropdown-link"
+              @click="userMenuOpen = false"
             >
               <i class="bi bi-bar-chart"></i> 仪表板
             </router-link>
 
             <!-- 普通菜单项 -->
-            <router-link to="/profile" class="dropdown-link">
+            <router-link to="/profile" class="dropdown-link" @click="userMenuOpen = false">
               <i class="bi bi-user-circle"></i> 个人资料
             </router-link>
 
@@ -65,6 +61,7 @@
               v-if="authStore.user?.role === 'admin'"
               to="/admin"
               class="dropdown-link"
+              @click="userMenuOpen = false"
             >
               <i class="bi bi-gear"></i> 管理后台
             </router-link>
@@ -89,6 +86,7 @@ import { useAuthStore } from '../stores/auth'
 const authStore = useAuthStore()
 const router = useRouter()
 const userMenuOpen = ref(false)
+let closeTimer: ReturnType<typeof setTimeout> | null = null
 
 function getInitial(name?: string): string {
   if (!name) return '？'
@@ -96,27 +94,46 @@ function getInitial(name?: string): string {
 }
 
 function toggleUserMenu() {
+  cancelClose()
   userMenuOpen.value = !userMenuOpen.value
+  // 点击打开后，300ms 后开始监听外部点击
+  if (userMenuOpen.value) {
+    setTimeout(() => {
+      document.addEventListener('click', handleOutsideClick)
+    }, 50)
+  }
 }
 
-function closeUserMenu() {
-  userMenuOpen.value = false
+function delayClose() {
+  closeTimer = setTimeout(() => {
+    userMenuOpen.value = false
+  }, 300)
+}
+
+function cancelClose() {
+  if (closeTimer) {
+    clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+function handleOutsideClick(e: MouseEvent) {
+  const menu = document.querySelector('.user-menu')
+  if (menu && !menu.contains(e.target as Node)) {
+    userMenuOpen.value = false
+    document.removeEventListener('click', handleOutsideClick)
+  }
 }
 
 async function handleLogout() {
   authStore.logout()
   userMenuOpen.value = false
+  document.removeEventListener('click', handleOutsideClick)
   router.push('/login')
 }
 </script>
 
 <style scoped>
-:root {
-  --primary-color: #2563eb;
-  --secondary-color: #64748b;
-  --danger-color: #ef4444;
-}
-
 /* ===== 导航栏 ===== */
 .navbar {
   background-color: white;
@@ -127,10 +144,8 @@ async function handleLogout() {
   z-index: 100;
 }
 
+/* 使用 Bootstrap 默认 .container 响应式宽度 */
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;

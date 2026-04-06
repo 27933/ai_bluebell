@@ -52,6 +52,9 @@ func SetupRouter(mode string) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 
+	// 静态文件：上传的图片
+	r.Static("/uploads", "./uploads")
+
 	v1 := r.Group("/api/v1")
 
 	// 认证相关（无需登录）
@@ -70,7 +73,7 @@ func SetupRouter(mode string) *gin.Engine {
 	v1.GET("/article-stats/trend", controller.GetArticleTrendHandler) // 新增访问趋势
 	v1.GET("/article-stats/batch", controller.BatchGetArticleStatsHandler) // 新增批量统计
 	v1.POST("/articles/view", controller.RecordArticleViewWithAntiCheatHandler)
-	v1.GET("/articles/:id", controller.GetArticleDetailHandler)
+	v1.GET("/articles/:id", middlewares.OptionalJWTMiddleware(), controller.GetArticleDetailHandler)
 
 	// 标签相关（访客可访问）
 	v1.GET("/tags", controller.GetAllTagsHandler)
@@ -99,6 +102,9 @@ func SetupRouter(mode string) *gin.Engine {
 		// 用户相关
 		v1.GET("/auth/profile", controller.GetUserProfileHandler)
 		v1.PUT("/auth/profile", controller.UpdateUserProfileHandler)
+
+		// 作者统计（需要登录）
+		v1.GET("/author/stats/trend", controller.GetAuthorTrendHandler)
 
 		// 文章相关（需要作者权限）
 		v1.POST("/articles", controller.CreateArticleHandler)

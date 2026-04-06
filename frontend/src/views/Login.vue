@@ -41,13 +41,14 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import apiClient from '../services/api'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -87,9 +88,12 @@ async function handleSubmit() {
 
         ElMessage.success('登录成功')
 
-        // 根据用户角色重定向
+        // 优先跳回来源页，否则按角色默认跳转
         setTimeout(() => {
-          if (data.user.role === 'author' || data.user.role === 'admin') {
+          const redirect = route.query.redirect as string
+          if (redirect) {
+            router.push(redirect)
+          } else if (data.user.role === 'author' || data.user.role === 'admin') {
             router.push('/dashboard')
           } else {
             router.push('/')

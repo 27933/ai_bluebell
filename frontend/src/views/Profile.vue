@@ -7,7 +7,15 @@
         </div>
       </template>
 
-      <div v-if="authStore.user" class="profile-content">
+      <div v-if="profileLoading" class="profile-content" style="text-align:center;padding:20px;color:#999;">
+        加载中...
+      </div>
+
+      <div v-else-if="!authStore.user" class="profile-content" style="text-align:center;padding:20px;color:#999;">
+        无法加载用户信息，请 <router-link to="/login">重新登录</router-link>
+      </div>
+
+      <div v-else class="profile-content">
         <el-form :model="form" label-width="100px">
           <el-form-item label="用户名">
             <span>{{ authStore.user.username }}</span>
@@ -60,6 +68,7 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
+const profileLoading = ref(true)
 
 const form = reactive({
   email: '',
@@ -83,18 +92,28 @@ function formatDate(date?: string) {
 }
 
 async function handleUpdate() {
+  // 前端邮箱格式校验
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    ElMessage.error('邮箱格式不正确')
+    return
+  }
+
   loading.value = true
   try {
-    const response = await apiClient.put('/auth/profile', {
-      email: form.email,
-      nickname: form.nickname,
-      bio: form.bio,
-    })
+    // 只发送非空字段，避免空字符串触发后端验证
+    const data: Record<string, string> = {}
+    if (form.nickname) data.nickname = form.nickname
+    if (form.email) data.email = form.email
+    if (form.bio) data.bio = form.bio
+
+    const response = await apiClient.put('/auth/profile', data)
 
     if (response.code === 1000) {
       ElMessage.success('资料更新成功')
       if (authStore.user) {
-        authStore.user.email = form.email
+        if (form.email) authStore.user.email = form.email
+        if (form.nickname) authStore.user.nickname = form.nickname
+        if (form.bio) authStore.user.bio = form.bio
       }
     } else {
       ElMessage.error(response.msg || '更新失败')
@@ -114,12 +133,30 @@ function handleLogout() {
   }, 500)
 }
 
-onMounted(() => {
-  if (authStore.user) {
-    form.email = authStore.user.email || ''
-    form.nickname = authStore.user.nickname || ''
-    form.bio = authStore.user.bio || ''
+async function loadProfile() {
+  try {
+    const response = await apiClient.get('/auth/profile')
+    if (response.code === 1000) {
+      const data = response.data
+      form.email = data.email || ''
+      form.nickname = data.nickname || ''
+      form.bio = data.bio || ''
+      authStore.setUser(data)
+    }
+  } catch (error: any) {
+    console.error('加载用户信息失败:', error)
+    if (authStore.user) {
+      form.email = authStore.user.email || ''
+      form.nickname = authStore.user.nickname || ''
+      form.bio = authStore.user.bio || ''
+    }
+  } finally {
+    profileLoading.value = false
   }
+}
+
+onMounted(() => {
+  loadProfile()
 })
 </script>
 

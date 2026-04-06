@@ -3,6 +3,7 @@ package mysql
 import (
 	"bluebell/models"
 	"database/sql"
+	"time"
 )
 
 // CreateComment 创建评论
@@ -42,29 +43,79 @@ func GetCommentById(id int64) (*models.Comment, error) {
 	return comment, err
 }
 
-// GetCommentList 获取评论列表
-func GetCommentList(articleId int64, page, size int) ([]*models.Comment, int64, error) {
-	var comments []*models.Comment
+// GetCommentList 获取评论列表（含作者信息）
+func GetCommentList(articleId int64, page, size int) ([]*models.ApiComment, int64, error) {
 	var total int64
 
-	// 计算总数
-	countSql := `SELECT COUNT(*) FROM comments WHERE article_id = ? AND status = 'active'`
+	// 计算总数：活跃评论 + 有活跃回复的已删除父评论
+	countSql := `SELECT COUNT(*) FROM comments c
+		WHERE c.article_id = ? AND (
+			c.status = 'active'
+			OR (c.status = 'deleted' AND c.parent_id IS NULL AND EXISTS (
+				SELECT 1 FROM comments r WHERE r.parent_id = c.id AND r.status = 'active'
+			))
+		)`
 	err := db.Get(&total, countSql, articleId)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 查询数据
-	querySql := `SELECT id, article_id, user_id, parent_id, content, like_count, status,
-		ip_address, user_agent, created_at, updated_at
-		FROM comments
-		WHERE article_id = ? AND status = 'active'
-		ORDER BY created_at DESC
+	// 查询数据：活跃评论 + 有活跃回复的已删除父评论（墓碑模式）
+	type commentRow struct {
+		ID        int64     `db:"id"`
+		Content   string    `db:"content"`
+		LikeCount int       `db:"like_count"`
+		Status    string    `db:"status"`
+		ParentID  *int64    `db:"parent_id"`
+		CreatedAt time.Time `db:"created_at"`
+		AuthorID  int64     `db:"author_id"`
+		Username  string    `db:"username"`
+		Nickname  string    `db:"nickname"`
+		Avatar    string    `db:"avatar"`
+	}
+
+	querySql := `SELECT c.id, c.content, c.like_count, c.status, c.parent_id, c.created_at,
+		u.id AS author_id, u.username, COALESCE(u.nickname, '') AS nickname, COALESCE(u.avatar, '') AS avatar
+		FROM comments c
+		JOIN users u ON c.user_id = u.id
+		WHERE c.article_id = ? AND (
+			c.status = 'active'
+			OR (c.status = 'deleted' AND c.parent_id IS NULL AND EXISTS (
+				SELECT 1 FROM comments r WHERE r.parent_id = c.id AND r.status = 'active'
+			))
+		)
+		ORDER BY c.created_at ASC
 		LIMIT ? OFFSET ?`
 
-	err = db.Select(&comments, querySql, articleId, size, (page-1)*size)
+	var rows []commentRow
+	err = db.Select(&rows, querySql, articleId, size, (page-1)*size)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	comments := make([]*models.ApiComment, 0, len(rows))
+	for _, row := range rows {
+		content := row.Content
+		author := models.CommentAuthor{
+			ID:       row.AuthorID,
+			Username: row.Username,
+			Nickname: row.Nickname,
+			Avatar:   row.Avatar,
+		}
+		// 已删除的评论：隐藏内容和作者信息（墓碑占位）
+		if row.Status == "deleted" {
+			content = "该评论已被删除"
+			author = models.CommentAuthor{}
+		}
+		comments = append(comments, &models.ApiComment{
+			ID:        row.ID,
+			Content:   content,
+			LikeCount: row.LikeCount,
+			Status:    row.Status,
+			ParentID:  row.ParentID,
+			CreatedAt: row.CreatedAt,
+			Author:    author,
+		})
 	}
 
 	return comments, total, nil

@@ -1,6 +1,10 @@
 package controller
 
 import (
+	"fmt"
+	"time"
+
+	"bluebell/dao/mysql"
 	"bluebell/logic"
 	"bluebell/models"
 	"strconv"
@@ -50,6 +54,44 @@ func GetTrendingArticlesHandler(c *gin.Context) {
 		"list": articles,
 		"page": p.Page,
 		"size": p.Size,
+	})
+}
+
+// GetAuthorTrendHandler 获取作者所有文章的访问趋势汇总
+// @Summary 获取作者访问趋势
+// @Description 获取当前登录作者所有文章的每日访问量汇总（用于仪表板折线图）
+// @Tags 统计
+// @Security ApiKeyAuth
+// @Param days query int false "统计天数" default(7) minimum(1) maximum(90)
+// @Success 200 {object} controller._ResponseArticleTrend "访问趋势数据"
+// @Router /api/v1/author/stats/trend [get]
+func GetAuthorTrendHandler(c *gin.Context) {
+	authorID, err := getCurrentUserID(c)
+	if err != nil {
+		ResponseError(c, CodeNeedLogin)
+		return
+	}
+
+	days := 7
+	if d := c.Query("days"); d != "" {
+		if _, err := fmt.Sscan(d, &days); err != nil || days < 1 || days > 90 {
+			days = 7
+		}
+	}
+
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -days)
+
+	trendData, err := mysql.GetAuthorDailyTrend(authorID, startDate, endDate)
+	if err != nil {
+		zap.L().Error("mysql.GetAuthorDailyTrend failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
+
+	ResponseSuccess(c, gin.H{
+		"days":  days,
+		"trend": trendData,
 	})
 }
 

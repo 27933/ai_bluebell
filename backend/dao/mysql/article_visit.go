@@ -10,47 +10,58 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// RecordArticleVisit 记录文章访问（带防刷机制）
-func RecordArticleVisit(articleID int64, userID *int64, ipAddress string, visitTime time.Time) error {
-	// 构建访问日期和小时
+// RecordArticleVisit 记录文章访问，返回是否为新访问
+//
+// 去重策略：
+//   - 已登录用户：按 (user_id, article_id, visit_date) 去重（DB 唯一键），
+//     同一账号不同 IP 同天只算1次，不同账号同IP各自独立计数
+//   - 未登录访客：按 (ip_address, article_id, visit_date) 去重（代码层检查），
+//     同IP同天只算1次
+func RecordArticleVisit(articleID int64, userID *int64, ipAddress string, visitTime time.Time) (bool, error) {
 	visitDate := visitTime.Format("2006-01-02")
 	visitHour := visitTime.Hour()
 
-	// 检查是否已存在访问记录（用于去重）
-	var exists bool
 	if userID != nil {
-		// 登录用户：检查user_id + article_id + visit_date
-		query := `SELECT EXISTS(SELECT 1 FROM article_visits WHERE user_id = ? AND article_id = ? AND visit_date = ?)`
-		err := db.Get(&exists, query, *userID, articleID, visitDate)
+		// ── 已登录：INSERT IGNORE，依赖 uk_user_article_date 唯一键原子去重 ──
+		visitID := snowflake.GenID()
+		result, err := db.Exec(
+			`INSERT IGNORE INTO article_visits (id, article_id, user_id, ip_address, visit_date, visit_hour, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			visitID, articleID, userID, ipAddress, visitDate, visitHour, time.Now(),
+		)
 		if err != nil {
-			return fmt.Errorf("check user visit exists failed: %w", err)
+			return false, fmt.Errorf("insert article visit failed: %w", err)
 		}
-	} else {
-		// 未登录用户：检查ip_address + article_id + visit_date
-		query := `SELECT EXISTS(SELECT 1 FROM article_visits WHERE ip_address = ? AND article_id = ? AND visit_date = ?)`
-		err := db.Get(&exists, query, ipAddress, articleID, visitDate)
+		rows, err := result.RowsAffected()
 		if err != nil {
-			return fmt.Errorf("check ip visit exists failed: %w", err)
+			return false, fmt.Errorf("get rows affected failed: %w", err)
 		}
+		return rows == 1, nil
 	}
 
-	// 如果已存在，不重复记录
-	if exists {
-		return nil
-	}
-
-	// 生成雪花ID
-	visitID := snowflake.GenID()
-
-	// 插入访问记录
-	query := `INSERT INTO article_visits (id, article_id, user_id, ip_address, visit_date, visit_hour, created_at)
-			  VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := db.Exec(query, visitID, articleID, userID, ipAddress, visitDate, visitHour, time.Now())
+	// ── 未登录：代码层 IP 去重（SELECT EXISTS + INSERT）──
+	var exists bool
+	err := db.Get(&exists,
+		`SELECT EXISTS(SELECT 1 FROM article_visits WHERE ip_address=? AND article_id=? AND visit_date=? AND user_id IS NULL)`,
+		ipAddress, articleID, visitDate,
+	)
 	if err != nil {
-		return fmt.Errorf("insert article visit failed: %w", err)
+		return false, fmt.Errorf("check ip visit exists failed: %w", err)
+	}
+	if exists {
+		return false, nil
 	}
 
-	return nil
+	visitID := snowflake.GenID()
+	_, err = db.Exec(
+		`INSERT INTO article_visits (id, article_id, user_id, ip_address, visit_date, visit_hour, created_at)
+		 VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+		visitID, articleID, ipAddress, visitDate, visitHour, time.Now(),
+	)
+	if err != nil {
+		return false, fmt.Errorf("insert guest visit failed: %w", err)
+	}
+	return true, nil
 }
 
 // GetArticleUniqueViews 获取文章独立访客数
@@ -242,4 +253,24 @@ func BatchGetArticleStats(articleIDs []int64) (map[int64]models.ArticleStatsData
 	}
 
 	return stats, nil
+}
+
+// GetAuthorDailyTrend 获取作者所有文章的每日访问汇总趋势
+func GetAuthorDailyTrend(authorID int64, startDate, endDate time.Time) ([]models.ArticleTrendData, error) {
+	query := `SELECT visit_date as label, COUNT(*) as value
+			  FROM article_visits av
+			  JOIN articles a ON av.article_id = a.id
+			  WHERE a.author_id = ? AND av.visit_date >= ? AND av.visit_date <= ?
+			  GROUP BY visit_date
+			  ORDER BY visit_date ASC`
+
+	var result []models.ArticleTrendData
+	err := db.Select(&result, query, authorID,
+		startDate.Format("2006-01-02"),
+		endDate.Format("2006-01-02"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get author daily trend failed: %w", err)
+	}
+	return result, nil
 }

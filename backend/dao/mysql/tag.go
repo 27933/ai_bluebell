@@ -160,7 +160,7 @@ func GetTagStats() ([]*models.ApiTag, error) {
 	var tags []*models.ApiTag
 	sqlStr := `SELECT
 		t.id, t.name, t.description, t.slug, t.created_at,
-		COUNT(DISTINCT at.article_id) as article_count
+		COUNT(DISTINCT a.id) as article_count
 		FROM tags t
 		LEFT JOIN article_tags at ON t.id = at.tag_id
 		LEFT JOIN articles a ON at.article_id = a.id AND a.status = 'published'

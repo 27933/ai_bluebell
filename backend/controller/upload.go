@@ -2,20 +2,32 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// UploadImageHandler 上传图片的处理函数（预留）
+const (
+	uploadDir    = "./uploads/images"
+	maxImageSize = 5 << 20 // 5MB
+)
+
+var allowedImageExts = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true,
+	".gif": true, ".webp": true,
+}
+
+// UploadImageHandler 上传图片
 // @Summary 上传图片
-// @Description 上传图片文件（预留接口）
+// @Description 上传图片文件，保存到服务器本地
 // @Tags 文件上传
 // @Accept multipart/form-data
 // @Produce json
-// @Param file formData file true "图片文件"
+// @Param file formData file true "图片文件（jpg/jpeg/png/gif/webp，最大5MB）"
 // @Success 200 {object} controller._ResponseUpload "上传成功"
 // @Failure 400 {object} controller._ResponseError "参数错误"
 // @Failure 401 {object} controller._ResponseError "未登录"
@@ -23,7 +35,7 @@ import (
 // @Security ApiKeyAuth
 // @Router /api/v1/upload/image [post]
 func UploadImageHandler(c *gin.Context) {
-	// 1. 获取上传的文件
+	// 1. 获取文件
 	file, err := c.FormFile("file")
 	if err != nil {
 		zap.L().Error("get upload file failed", zap.Error(err))
@@ -31,22 +43,42 @@ func UploadImageHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. 校验文件类型和大小
-	// TODO: 实现文件类型和大小校验
+	// 2. 校验大小
+	if file.Size > maxImageSize {
+		ResponseErrorWithMsg(c, CodeInvalidParam, "图片大小不能超过 5MB")
+		return
+	}
 
-	// 3. 保存文件
-	// 生成文件名：时间戳 + 原始扩展名
-	ext := filepath.Ext(file.Filename)
-	filename := fmt.Sprintf("%d%s", time.Now().Unix(), ext)
+	// 3. 校验类型（扩展名）
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowedImageExts[ext] {
+		ResponseErrorWithMsg(c, CodeInvalidParam, "仅支持 jpg/jpeg/png/gif/webp 格式")
+		return
+	}
 
-	// TODO: 实现文件保存逻辑
-	// 实际项目中应该保存到云存储或指定目录
+	// 4. 确保目录存在
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		zap.L().Error("create upload dir failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
 
-	// 4. 返回响应
+	// 5. 生成唯一文件名，避免覆盖
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	savePath := filepath.Join(uploadDir, filename)
+
+	// 6. 保存文件
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		zap.L().Error("save upload file failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
+
+	// 7. 返回可访问的 URL
 	ResponseSuccess(c, gin.H{
-		"url": fmt.Sprintf("/uploads/images/%s", filename),
+		"url":      fmt.Sprintf("/uploads/images/%s", filename),
 		"filename": filename,
-		"size": file.Size,
+		"size":     file.Size,
 	})
 }
 

@@ -19,66 +19,62 @@ const (
 	RedisKeyExpireIPVisit = 24 * 3600 // 24小时
 )
 
-// RecordArticleViewWithAntiCheat 记录文章访问（带防刷机制）
-func RecordArticleViewWithAntiCheat(articleID int64, userID *int64, ipAddress string) error {
-	// 获取当前时间
+// TryRecordVisit 同步尝试记录访问，返回是否为新访问
+// 供 GetArticleDetailHandler 调用，确保响应中的 view_count 与实际一致
+func TryRecordVisit(articleID int64, userID *int64, ipAddress string) (inserted bool) {
 	now := time.Now()
 	visitDate := now.Format("2006-01-02")
 
-	// 检查IP访问限制（仅对未登录用户）
+	// Redis 限流（仅对未登录用户）
 	if userID == nil {
-		// 构建Redis key
 		redisKey := RedisKeyPrefixIPVisit + strconv.FormatInt(articleID, 10) + ":" + ipAddress + ":" + visitDate
-
-		// 获取当前访问次数
 		currentCount, err := redis.GetVisitCount(redisKey)
 		if err != nil {
 			zap.L().Error("get visit count from redis failed", zap.Error(err))
-			// 不中断主流程，继续记录访问
 		} else if currentCount >= IPVisitLimit {
-			// 达到访问限制，不记录此次访问
 			zap.L().Info("IP visit limit reached",
 				zap.Int64("article_id", articleID),
 				zap.String("ip", ipAddress),
 				zap.Int("limit", IPVisitLimit))
-			return nil
+			return false
 		}
-
-		// 增加访问计数
 		if err := redis.IncrVisitCount(redisKey, RedisKeyExpireIPVisit); err != nil {
 			zap.L().Error("incr visit count failed", zap.Error(err))
 		}
 	}
 
-	// 记录访问到数据库（异步执行）
-	go func() {
-		// 检查数据库中的访问限制
-		if userID == nil {
-			canVisit, count, err := mysql.CheckIPVisitLimit(articleID, ipAddress, now, IPVisitLimit)
-			if err != nil {
-				zap.L().Error("check ip visit limit failed", zap.Error(err))
-				return
-			}
-			if !canVisit {
-				zap.L().Info("IP visit limit in database",
-					zap.Int64("article_id", articleID),
-					zap.String("ip", ipAddress),
-					zap.Int("count", count))
-				return
-			}
+	// DB 限流（仅对未登录用户）
+	if userID == nil {
+		canVisit, count, err := mysql.CheckIPVisitLimit(articleID, ipAddress, now, IPVisitLimit)
+		if err != nil {
+			zap.L().Error("check ip visit limit failed", zap.Error(err))
+			return false
 		}
-
-		// 记录访问
-		if err := mysql.RecordArticleVisit(articleID, userID, ipAddress, now); err != nil {
-			zap.L().Error("record article visit failed", zap.Error(err))
-			return
+		if !canVisit {
+			zap.L().Info("IP visit limit in database",
+				zap.Int64("article_id", articleID),
+				zap.String("ip", ipAddress),
+				zap.Int("count", count))
+			return false
 		}
+	}
 
-		// 更新文章总浏览量（原有的统计逻辑）
+	// 原子插入（INSERT IGNORE），重复访问返回 false
+	ok, err := mysql.RecordArticleVisit(articleID, userID, ipAddress, now)
+	if err != nil {
+		zap.L().Error("record article visit failed", zap.Error(err))
+		return false
+	}
+	if ok {
 		if err := mysql.UpdateArticleView(articleID, now); err != nil {
 			zap.L().Error("update article view count failed", zap.Error(err))
 		}
-	}()
+	}
+	return ok
+}
 
+// RecordArticleViewWithAntiCheat 异步版（供其他场景使用）
+func RecordArticleViewWithAntiCheat(articleID int64, userID *int64, ipAddress string) error {
+	go TryRecordVisit(articleID, userID, ipAddress)
 	return nil
 }

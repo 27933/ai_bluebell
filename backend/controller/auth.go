@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"fmt"
+
 	"bluebell/logic"
 	"bluebell/models"
 
@@ -42,7 +44,7 @@ func LoginHandler(c *gin.Context) {
 	// 3. 构建响应数据
 	response := gin.H{
 		"user": gin.H{
-			"id":       user.ID,
+			"id":       fmt.Sprintf("%d", user.ID), // 与文章 author_id 保持一致（string 类型）
 			"username": user.Username,
 			"email":    user.Email.String,
 			"role":     user.Role,
@@ -117,6 +119,10 @@ func UpdateUserProfileHandler(c *gin.Context) {
 	// 2. 更新用户信息
 	if err := logic.UpdateUserProfile(userID, p); err != nil {
 		zap.L().Error("logic.UpdateUserProfile failed", zap.Error(err))
+		if err.Error() == "email already exists" {
+			ResponseErrorWithMsg(c, CodeInvalidParam, "该邮箱已被其他账号使用")
+			return
+		}
 		ResponseError(c, CodeServerBusy)
 		return
 	}

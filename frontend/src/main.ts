@@ -15,7 +15,7 @@ app.use(ElementPlus)
 app.use(createPinia())
 app.use(router)
 
-// 初始化认证状态
+// 初始化认证状态（只恢复 token 和已缓存的 user）
 const authStore = useAuthStore()
 authStore.loadTokenFromStorage()
 

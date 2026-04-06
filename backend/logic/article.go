@@ -54,13 +54,8 @@ func GetArticleDetail(articleID int64) (*models.Article, error) {
 		return nil, fmt.Errorf("article not published")
 	}
 
-	// 异步更新访问量
-	go func() {
-		date := time.Now()
-		if err := mysql.UpdateArticleView(articleID, date); err != nil {
-			zap.L().Error("mysql.UpdateArticleView() failed", zap.Error(err))
-		}
-	}()
+	// 注意：view_count 由 RecordArticleViewWithAntiCheat 负责更新（带去重）
+	// 此处不再直接调用 UpdateArticleView，避免每次 GET 都无限累加
 
 	return article, nil
 }

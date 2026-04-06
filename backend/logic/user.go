@@ -191,8 +191,10 @@ func UpdateUserProfile(userID int64, req *models.ParamUserUpdate) error {
 		updates["avatar"] = req.Avatar
 	}
 	if req.Email != "" {
-		// 检查邮箱是否已被使用
-		if user, _ := mysql.GetUserByEmail(req.Email); user != nil && user.ID != userID {
+		// 检查邮箱是否已被其他用户使用
+		// GetUserByEmail 始终返回非 nil 指针，需同时判断 err 和 ID
+		existingUser, err := mysql.GetUserByEmail(req.Email)
+		if err == nil && existingUser.ID != 0 && existingUser.ID != userID {
 			return errors.New("email already exists")
 		}
 		updates["email"] = req.Email
