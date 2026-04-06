@@ -15,10 +15,9 @@ log:
   max_age: 30
   max_backups: 7
 
-# 注意：host 使用 Docker Compose 服务名，不是 127.0.0.1
-# bridge 网络中各容器通过服务名互相寻址
+# network_mode: host，直接通过 127.0.0.1 访问宿主机上的 mysql8 / redis 容器
 mysql:
-  host: "mysql"
+  host: "127.0.0.1"
   port: 3306
   user: "root"
   password: "123456"
@@ -27,7 +26,7 @@ mysql:
   max_idle_conns: 50
 
 redis:
-  host: "redis"
+  host: "127.0.0.1"
   port: 6379
   password: "123456"
   db: 6
