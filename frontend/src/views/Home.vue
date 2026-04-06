@@ -646,11 +646,30 @@ watch(() => route.query.tag, (newTag) => {
   }
 
   .input-group {
-    flex-direction: column;
+    flex-direction: row;
+  }
+
+  /* 筛选行在移动端堆叠 */
+  .row.mb-4 {
+    gap: 0.75rem;
+  }
+
+  .d-flex.gap-2 {
+    flex-wrap: wrap;
+  }
+
+  .d-flex.gap-2 .form-select {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .page-size-select {
+    max-width: none !important;
   }
 
   .pagination {
     flex-wrap: wrap;
+    gap: 0.25rem;
   }
 
   .article-meta {
@@ -658,8 +677,16 @@ watch(() => route.query.tag, (newTag) => {
     align-items: flex-start;
   }
 
-  .col-md-6 {
-    flex: 0 0 100%;
+  /* 文章卡片在移动端竖排 */
+  .article-card {
+    flex-direction: column !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }
 </style>

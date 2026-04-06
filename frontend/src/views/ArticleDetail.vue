@@ -904,5 +904,10 @@ onMounted(() => {
     font-size: 0.9rem;
     padding: 0.5rem 0.75rem;
   }
+
+  /* 嵌套回复缩进在小屏减小 */
+  .replies-list {
+    margin-left: 1rem;
+  }
 }
 </style>

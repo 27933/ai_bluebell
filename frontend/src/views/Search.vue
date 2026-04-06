@@ -331,4 +331,26 @@ onMounted(() => {
   background-color: #fef08a;
   padding: 0 2px;
 }
+
+@media (max-width: 768px) {
+  .search-box .input-group {
+    max-width: 100%;
+    flex-direction: row;
+  }
+
+  .search-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .result-item {
+    padding: 1rem;
+  }
+}
 </style>

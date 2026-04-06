@@ -651,7 +651,7 @@ watch(() => timeRange.value, () => {
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .articles-header {
@@ -662,12 +662,20 @@ watch(() => timeRange.value, () => {
 
   .articles-table th,
   .articles-table td {
-    padding: 0.75rem;
-    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
   }
 
   .action-buttons {
     flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

@@ -113,8 +113,10 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-// 编辑模式
-const editorMode = ref<'edit' | 'preview' | 'split'>('split')
+// 编辑模式（移动端默认 edit，桌面默认 split）
+const editorMode = ref<'edit' | 'preview' | 'split'>(
+  window.innerWidth <= 768 ? 'edit' : 'split'
+)
 const isEdit = computed(() => !!route.params.id)
 
 // 表单数据
@@ -436,7 +438,8 @@ onBeforeUnmount(() => {
 .editor-wrapper {
   display: flex;
   flex-direction: column;
-  height: 700px;
+  height: calc(100vh - 320px);
+  min-height: 400px;
 }
 
 .editor-tabs {
@@ -604,5 +607,68 @@ onBeforeUnmount(() => {
 
 .draft-status i {
   margin-right: 4px;
+}
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  .write-container {
+    padding: 16px 12px;
+  }
+
+  .write-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+
+  .write-header h1 {
+    font-size: 20px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .header-actions .el-button {
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .article-meta {
+    padding: 12px;
+  }
+
+  /* 移动端隐藏分屏 tab，只保留编辑/预览 */
+  .tab:nth-child(3) {
+    display: none;
+  }
+
+  .tab {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .upload-img-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+
+  .markdown-editor {
+    font-size: 15px;
+    padding: 12px;
+  }
+
+  .preview-pane {
+    padding: 12px;
+  }
+
+  .editor-wrapper {
+    height: calc(100vh - 280px);
+    min-height: 300px;
+  }
 }
 </style>
