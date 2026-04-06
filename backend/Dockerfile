@@ -2,6 +2,9 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /build
 
+# 使用国内 Go 模块代理（解决境内服务器无法访问 proxy.golang.org 问题）
+ENV GOPROXY=https://goproxy.cn,direct
+
 # 先复制依赖文件，利用 Docker 缓存
 COPY go.mod go.sum ./
 RUN go mod download
