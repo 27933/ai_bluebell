@@ -98,6 +98,11 @@ func GetArticleList(param *models.ParamArticleList) ([]*models.Article, int64, e
 		args = append(args, param.Tag)
 	}
 
+	if param.IsFeatured != nil {
+		conditions = append(conditions, "is_featured = ?")
+		args = append(args, *param.IsFeatured)
+	}
+
 	// 计算总数
 	countSql := `SELECT COUNT(*) FROM articles WHERE ` + strings.Join(conditions, " AND ")
 	err := db.Get(&total, countSql, args...)
@@ -142,6 +147,59 @@ func GetArticleList(param *models.ParamArticleList) ([]*models.Article, int64, e
 	}
 
 	return articles, total, nil
+}
+
+// GetAdminArticleList 管理员文章列表（JOIN users 表，返回作者用户名）
+func GetAdminArticleList(param *models.ParamArticleList) ([]*models.AdminArticleListItem, int64, error) {
+	var items []*models.AdminArticleListItem
+	var total int64
+
+	conditions := []string{"1=1"}
+	args := []interface{}{}
+
+	if param.Status != "" && param.Status != "all" {
+		conditions = append(conditions, "a.status = ?")
+		args = append(args, param.Status)
+	}
+	if param.AuthorID > 0 {
+		conditions = append(conditions, "a.author_id = ?")
+		args = append(args, param.AuthorID)
+	}
+	if param.AuthorName != "" {
+		conditions = append(conditions, "u.username LIKE ?")
+		args = append(args, "%"+param.AuthorName+"%")
+	}
+	if param.Keyword != "" {
+		conditions = append(conditions, "(a.title LIKE ? OR a.content LIKE ?)")
+		args = append(args, "%"+param.Keyword+"%", "%"+param.Keyword+"%")
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+
+	countSql := `SELECT COUNT(*) FROM articles a LEFT JOIN users u ON a.author_id = u.id WHERE ` + whereClause
+	if err := db.Get(&total, countSql, args...); err != nil {
+		return nil, 0, err
+	}
+
+	querySql := fmt.Sprintf(`SELECT
+		a.id, a.title, a.summary, a.word_count, a.author_id, a.status,
+		a.is_featured, a.featured_at, a.allow_comment, a.like_count, a.comment_count,
+		a.slug, a.view_count, a.created_at, a.updated_at,
+		COALESCE(u.username, '') AS author_username,
+		COALESCE(u.nickname, '') AS author_nickname
+		FROM articles a
+		LEFT JOIN users u ON a.author_id = u.id
+		WHERE %s
+		ORDER BY a.created_at DESC
+		LIMIT ? OFFSET ?`,
+		whereClause)
+
+	args = append(args, param.Size, (param.Page-1)*param.Size)
+	if err := db.Select(&items, querySql, args...); err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
 }
 
 // GetFeaturedArticles 获取精选文章

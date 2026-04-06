@@ -21,6 +21,11 @@ backend/web_app.log
 backend/bin/
 backend/.air/
 
+# 生产配置（含真实 secret，不提交 git）
+# 参考 backend/conf/cloud.yaml.example 创建
+backend/conf/cloud.yaml
+backend/conf/prod.yaml
+
 # Frontend
 frontend/node_modules/
 frontend/dist/

@@ -57,6 +57,48 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Profile.vue'),
     meta: { requiresAuth: true },
   },
+  // 403 页面
+  {
+    path: '/403',
+    name: 'Forbidden',
+    component: () => import('../views/Forbidden.vue'),
+  },
+  // 管理后台（独立布局，admin 专用）
+  {
+    path: '/admin',
+    component: () => import('../views/admin/AdminLayout.vue'),
+    beforeEnter: (_to, _from, next) => {
+      const authStore = useAuthStore()
+      if (!authStore.isLoggedIn) {
+        return next({ name: 'Login', query: { redirect: '/admin' } })
+      }
+      if (authStore.user?.role !== 'admin') {
+        return next({ name: 'Forbidden' })
+      }
+      next()
+    },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/stats',
+      },
+      {
+        path: 'stats',
+        name: 'AdminStats',
+        component: () => import('../views/admin/StatsView.vue'),
+      },
+      {
+        path: 'users',
+        name: 'AdminUsers',
+        component: () => import('../views/admin/UsersView.vue'),
+      },
+      {
+        path: 'articles',
+        name: 'AdminArticles',
+        component: () => import('../views/admin/ArticlesView.vue'),
+      },
+    ],
+  },
 ]
 
 const router = createRouter({
@@ -93,3 +135,4 @@ router.beforeEach((to, _from, next) => {
 })
 
 export default router
+

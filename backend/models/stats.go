@@ -11,10 +11,10 @@ type SystemOverview struct {
 
 // DailyStats 日统计数据结构
 type DailyStats struct {
-	Date           string `json:"date"`
-	NewUserCount   int64  `json:"new_user_count"`
-	NewArticleCount int64 `json:"new_article_count"`
-	NewCommentCount int64 `json:"new_comment_count"`
+	Date            string `json:"date"             db:"date"`
+	NewUserCount    int64  `json:"new_user_count"   db:"new_user_count"`
+	NewArticleCount int64  `json:"new_article_count" db:"new_article_count"`
+	NewCommentCount int64  `json:"new_comment_count" db:"new_comment_count"`
 }
 
 // ParamStatsDaily 日统计查询参数

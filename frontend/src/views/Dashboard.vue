@@ -253,7 +253,12 @@ function renderChart(data: any) {
 
   // API 返回格式：{ trend: [{label, value}, ...] }
   const trendData = data.trend || []
-  const labels = trendData.map((item: any) => item.label)
+  const labels = trendData.map((item: any) => {
+    const l: string = item.label || ''
+    // "2026-04-06T00:00:00Z" 或 "2026-04-06" → "04-06"
+    // "2026-04-06 14:00" (小时粒度) 保留原样
+    return l.length >= 10 && !l.includes(' ') ? l.slice(5, 10) : l
+  })
   const values = trendData.map((item: any) => item.value)
 
   const option = {

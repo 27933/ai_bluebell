@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 
+	"bluebell/dao/mysql"
 	"bluebell/logic"
 	"bluebell/models"
 
@@ -37,7 +39,11 @@ func LoginHandler(c *gin.Context) {
 	})
 	if err != nil {
 		zap.L().Error("logic.LoginWithRefreshToken failed", zap.String("username", p.Username), zap.Error(err))
-		ResponseError(c, CodeInvalidPassword)
+		if errors.Is(err, mysql.ErrorUserBanned) {
+			ResponseError(c, CodeUserBanned)
+		} else {
+			ResponseError(c, CodeInvalidPassword)
+		}
 		return
 	}
 

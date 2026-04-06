@@ -39,7 +39,15 @@
 
       <!-- 标签筛选 -->
       <div class="mb-4">
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+          <span
+            class="tag tag-featured"
+            :class="{ 'tag-featured-active': featuredOnly }"
+            @click="toggleFeatured"
+          >
+            <i class="bi bi-star-fill"></i> 精选
+          </span>
+          <span class="filter-divider"></span>
           <span
             v-for="tag in popularTags"
             :key="tag.id"
@@ -50,9 +58,9 @@
             {{ tag.name }}
           </span>
           <span
-            v-if="selectedTag"
+            v-if="selectedTag || featuredOnly"
             class="tag tag-clear"
-            @click="selectedTag = ''; loadArticles()"
+            @click="clearFilters"
           >
             清除筛选 &times;
           </span>
@@ -60,9 +68,15 @@
       </div>
 
       <!-- 当前筛选状态 -->
-      <div v-if="isSearchMode || selectedTag" class="filter-status mb-3">
+      <div v-if="isSearchMode || selectedTag || featuredOnly" class="filter-status mb-3">
         <span v-if="isSearchMode">
           搜索 "<strong>{{ searchQuery }}</strong>" 的结果，共 {{ total }} 条
+        </span>
+        <span v-else-if="featuredOnly && selectedTag">
+          精选 · 标签 "<strong>{{ selectedTag }}</strong>"，共 {{ total }} 条
+        </span>
+        <span v-else-if="featuredOnly">
+          精选文章，共 {{ total }} 条
         </span>
         <span v-else-if="selectedTag">
           标签 "<strong>{{ selectedTag }}</strong>" 下的文章，共 {{ total }} 条
@@ -85,7 +99,10 @@
           :key="article.id"
           class="col-md-6"
         >
-          <router-link :to="`/article/${article.id}`" class="article-card">
+          <router-link :to="`/article/${article.id}`" class="article-card" :class="{ 'article-card-featured': article.is_featured }">
+            <div v-if="article.is_featured" class="featured-ribbon">
+              <i class="bi bi-star-fill"></i>
+            </div>
             <div class="card-body">
               <h5 class="article-title">{{ article.title }}</h5>
               <p class="article-summary">{{ article.summary }}</p>
@@ -183,6 +200,7 @@ interface Article {
   like_count: number
   comment_count: number
   created_at: string
+  is_featured: boolean
 }
 
 const articles = ref<Article[]>([])
@@ -193,6 +211,7 @@ const total = ref(0)
 const searchQuery = ref('')
 const sortBy = ref('hot')
 const selectedTag = ref('')
+const featuredOnly = ref(false)
 
 const popularTags = ref<Tag[]>([])
 
@@ -233,9 +252,11 @@ async function loadArticles() {
       status: 'published',
       sort: getSortParam(sortBy.value),
     }
-    // 如果选择了标签，添加标签筛选
     if (selectedTag.value) {
       params.tag = selectedTag.value
+    }
+    if (featuredOnly.value) {
+      params.is_featured = true
     }
     const response = await apiClient.get('/articles', {
       params,
@@ -268,8 +289,20 @@ async function loadTags() {
   }
 }
 
+function toggleFeatured() {
+  featuredOnly.value = !featuredOnly.value
+  currentPage.value = 1
+  loadArticles()
+}
+
+function clearFilters() {
+  selectedTag.value = ''
+  featuredOnly.value = false
+  currentPage.value = 1
+  loadArticles()
+}
+
 function handleTagClick(tagName: string) {
-  // 如果点击已选中的标签，取消选中
   if (selectedTag.value === tagName) {
     selectedTag.value = ''
   } else {
@@ -493,6 +526,7 @@ watch(() => route.query.tag, (newTag) => {
 
 /* 文章卡片 */
 .article-card {
+  position: relative;
   border: none;
   background: white;
   border-radius: 8px;
@@ -508,6 +542,61 @@ watch(() => route.query.tag, (newTag) => {
 .article-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.article-card-featured {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1.5px rgba(245, 158, 11, 0.35);
+}
+
+.article-card-featured:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 0 0 1.5px rgba(245, 158, 11, 0.5);
+}
+
+.featured-ribbon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.7rem;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+  z-index: 1;
+}
+
+.tag-featured {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-weight: 600;
+}
+
+.tag-featured:hover {
+  background-color: #f59e0b;
+  color: white;
+  border-color: #f59e0b;
+}
+
+.tag-featured-active {
+  background-color: #f59e0b !important;
+  color: white !important;
+  border-color: #f59e0b !important;
+}
+
+.filter-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.align-items-center {
+  align-items: center;
 }
 
 .card-body {

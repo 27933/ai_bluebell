@@ -70,8 +70,8 @@ func GetDailyStats(startDate, endDate string) ([]*models.DailyStats, error) {
 			SELECT created_at, 'comment' as type FROM comments WHERE created_at >= '%s' AND created_at <= '%s 23:59:59'
 		) combined
 		GROUP BY DATE(created_at)
-		ORDER BY date DESC
-	`, startDate, startDate, startDate, startDate, startDate, startDate)
+		ORDER BY date ASC
+	`, startDate, endDate, startDate, endDate, startDate, endDate)
 
 	err := db.Select(&stats, sqlStr)
 	return stats, err

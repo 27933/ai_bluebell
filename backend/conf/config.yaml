@@ -7,6 +7,8 @@ machine_id: 1
 
 auth:
   jwt_expire: 8
+  jwt_secret: "bluebell-dev-jwt-secret-change-in-prod"
+  refresh_secret: "bluebell-dev-refresh-secret-change-in-prod"
 
 log:
   level: "info"
@@ -15,7 +17,7 @@ log:
   max_age: 30
   max_backups: 7
 mysql:
-  host: "172.31.66.223"
+  host: "127.0.0.1"
   port: 3306
   user: "root"
   password: "123456"
@@ -23,7 +25,7 @@ mysql:
   max_open_conns: 200
   max_idle_conns: 50
 redis:
-  host: "172.31.66.223"
+  host: "127.0.0.1"
   port: 6379
   password: "123456"
   db: 6

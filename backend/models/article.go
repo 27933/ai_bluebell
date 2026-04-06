@@ -84,6 +84,27 @@ type AuthorInfo struct {
 	Bio      string `json:"bio,omitempty"`
 }
 
+// AdminArticleListItem 管理员文章列表项（含作者信息，JOIN users 表）
+type AdminArticleListItem struct {
+	ID             int64      `json:"id,string" db:"id"`
+	Title          string     `json:"title" db:"title"`
+	Summary        string     `json:"summary" db:"summary"`
+	WordCount      int        `json:"word_count" db:"word_count"`
+	AuthorID       int64      `json:"author_id,string" db:"author_id"`
+	AuthorUsername string     `json:"author_username" db:"author_username"`
+	AuthorNickname string     `json:"author_nickname,omitempty" db:"author_nickname"`
+	Status         string     `json:"status" db:"status"`
+	IsFeatured     bool       `json:"is_featured" db:"is_featured"`
+	FeaturedAt     *time.Time `json:"featured_at,omitempty" db:"featured_at"`
+	AllowComment   bool       `json:"allow_comment" db:"allow_comment"`
+	LikeCount      int        `json:"like_count" db:"like_count"`
+	CommentCount   int        `json:"comment_count" db:"comment_count"`
+	ViewCount      int        `json:"view_count" db:"view_count"`
+	Slug           string     `json:"slug" db:"slug"`
+	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
+}
+
 // ParamCreateArticle 创建文章请求参数
 type ParamCreateArticle struct {
 	Title           string   `json:"title" binding:"required,min=1,max=200"`
@@ -112,15 +133,16 @@ type ParamUpdateArticle struct {
 
 // ParamArticleList 文章列表查询参数
 type ParamArticleList struct {
-	Sort       string   `form:"sort" binding:"omitempty,oneof=time popular"`
-	Page       int      `form:"page" binding:"omitempty,min=1"`
-	Size       int      `form:"size" binding:"omitempty,min=1,max=50"`
-	Tag        string   `form:"tag"`
-	Status     string   `form:"status" binding:"omitempty,oneof=draft published offline all"`
-	AuthorID   int64    `form:"author_id"`
-	AuthorName string   `form:"author_name"`  // 新增：按作者用户名搜索
-	Days       int      `form:"days" binding:"omitempty,min=1,max=365"`
-	Keyword    string   `form:"keyword"`
+	Sort       string `form:"sort" binding:"omitempty,oneof=time popular"`
+	Page       int    `form:"page" binding:"omitempty,min=1"`
+	Size       int    `form:"size" binding:"omitempty,min=1,max=50"`
+	Tag        string `form:"tag"`
+	Status     string `form:"status" binding:"omitempty,oneof=draft published offline all"`
+	AuthorID   int64  `form:"author_id"`
+	AuthorName string `form:"author_name"` // 按作者用户名搜索
+	Days       int    `form:"days" binding:"omitempty,min=1,max=365"`
+	Keyword    string `form:"keyword"`
+	IsFeatured *bool  `form:"is_featured"` // 精选筛选，nil=不过滤
 }
 
 // ParamArticleStatus 更新文章状态参数

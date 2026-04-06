@@ -9,10 +9,13 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-var (
-	mySecret = []byte("夏天夏天悄悄过去")
-	refreshSecret = []byte("refresh_token_secret_key")
-)
+func jwtSecret() []byte {
+	return []byte(viper.GetString("auth.jwt_secret"))
+}
+
+func jwtRefreshSecret() []byte {
+	return []byte(viper.GetString("auth.refresh_secret"))
+}
 
 // MyClaims 自定义声明结构体并内嵌jwt.StandardClaims
 // jwt包自带的jwt.StandardClaims只包含了官方字段
@@ -45,7 +48,7 @@ func GenToken(userID int64, username string) (string, error) {
 	// 使用指定的签名方法创建签名对象
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
 	// 使用指定的secret签名并获得完整的编码后的字符串token
-	return token.SignedString(mySecret)
+	return token.SignedString(jwtSecret())
 }
 
 // GenRefreshToken 生成refresh token
@@ -59,14 +62,14 @@ func GenRefreshToken(userID int64) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
-	return token.SignedString(refreshSecret)
+	return token.SignedString(jwtRefreshSecret())
 }
 
 // ParseRefreshToken 解析refresh token
 func ParseRefreshToken(tokenString string) (*RefreshClaims, error) {
 	var rc = new(RefreshClaims)
 	token, err := jwt.ParseWithClaims(tokenString, rc, func(token *jwt.Token) (i interface{}, err error) {
-		return refreshSecret, nil
+		return jwtRefreshSecret(), nil
 	})
 	if err != nil {
 		return nil, err
@@ -82,7 +85,7 @@ func ParseToken(tokenString string) (*MyClaims, error) {
 	// 解析token
 	var mc = new(MyClaims)
 	token, err := jwt.ParseWithClaims(tokenString, mc, func(token *jwt.Token) (i interface{}, err error) {
-		return mySecret, nil
+		return jwtSecret(), nil
 	})
 	if err != nil {
 		return nil, err

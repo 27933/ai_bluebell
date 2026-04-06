@@ -7,6 +7,8 @@ machine_id: 2
 
 auth:
   jwt_expire: 8
+  jwt_secret: ""        # 必填：运行 `openssl rand -hex 32` 生成
+  refresh_secret: ""    # 必填：运行 `openssl rand -hex 32` 生成
 
 log:
   level: "info"
@@ -15,11 +17,12 @@ log:
   max_age: 30
   max_backups: 7
 
+# network_mode: host，直接通过 127.0.0.1 访问宿主机上的 mysql8 / redis 容器
 mysql:
   host: "127.0.0.1"
   port: 3306
   user: "root"
-  password: "123456"
+  password: ""          # 必填：MySQL 密码
   dbname: "bluebell"
   max_open_conns: 200
   max_idle_conns: 50
@@ -27,6 +30,6 @@ mysql:
 redis:
   host: "127.0.0.1"
   port: 6379
-  password: "123456"
+  password: ""          # 必填：Redis 密码
   db: 6
   pool_size: 100

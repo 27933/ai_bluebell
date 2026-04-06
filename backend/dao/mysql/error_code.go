@@ -6,6 +6,7 @@ var (
 	ErrorUserExist       = errors.New("用户已存在")
 	ErrorUserNotExist    = errors.New("用户不存在")
 	ErrorInvalidPassword = errors.New("用户名或密码错误")
+	ErrorUserBanned      = errors.New("账号已被封禁")
 	ErrorInvalidID       = errors.New("无效的ID")
 	ErrorArticleNotExist = errors.New("文章不存在")
 	ErrorTagNotExist     = errors.New("标签不存在")

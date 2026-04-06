@@ -6,6 +6,7 @@ import (
 	"bluebell/middlewares"
 	_ "bluebell/docs" // 导入swagger文档
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,6 @@ func SetupRouter(mode string) *gin.Engine {
 		gin.SetMode(gin.ReleaseMode) // gin设置成发布模式
 	}
 	r := gin.New()
-	//r.Use(logger.GinLogger(), logger.GinRecovery(true), middlewares.RateLimitMiddleware(2*time.Second, 1))
 	r.Use(logger.GinLogger(), logger.GinRecovery(true))
 
 	// 配置 CORS 中间件
@@ -27,7 +27,7 @@ func SetupRouter(mode string) *gin.Engine {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -58,9 +58,11 @@ func SetupRouter(mode string) *gin.Engine {
 	v1 := r.Group("/api/v1")
 
 	// 认证相关（无需登录）
-	v1.POST("/auth/login", controller.LoginHandler)
-	v1.POST("/auth/signup", controller.SignUpHandler)
-	v1.POST("/auth/refresh", controller.RefreshTokenHandler) // 新增刷新token接口
+	// 登录：每个 IP 每 3 秒 1 个令牌，桶容量 3（允许短暂突发）
+	v1.POST("/auth/login", middlewares.IPRateLimitMiddleware(3*time.Second, 3), controller.LoginHandler)
+	// 注册：每个 IP 每 10 秒 1 个令牌，桶容量 2
+	v1.POST("/auth/signup", middlewares.IPRateLimitMiddleware(10*time.Second, 2), controller.SignUpHandler)
+	v1.POST("/auth/refresh", controller.RefreshTokenHandler)
 
 	// 文章相关（访客可访问）
 	v1.GET("/articles", controller.GetArticleListHandler)

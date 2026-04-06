@@ -82,7 +82,7 @@ func GetUserByUsername(username string) (*models.User, error) {
 }
 
 // GetUserList 获取用户列表（管理员功能）
-func GetUserList(role, status string, page, size int) ([]*models.User, int64, error) {
+func GetUserList(role, status string, page, size int) ([]*models.ApiUserInfo, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -96,7 +96,22 @@ func GetUserList(role, status string, page, size int) ([]*models.User, int64, er
 		return nil, 0, err
 	}
 
-	return users, total, nil
+	result := make([]*models.ApiUserInfo, 0, len(users))
+	for _, u := range users {
+		result = append(result, &models.ApiUserInfo{
+			ID:          u.ID,
+			Username:    u.Username,
+			Email:       u.Email.String,
+			Role:        u.Role,
+			Status:      u.Status,
+			Nickname:    u.Nickname.String,
+			Avatar:      u.Avatar.String,
+			CreatedAt:   u.CreatedAt,
+			LastLoginAt: u.LastLoginAt,
+		})
+	}
+
+	return result, total, nil
 }
 
 // UpdateUserStatus 更新用户状态（管理员功能）

@@ -7,6 +7,8 @@ machine_id: 1
 
 auth:
   jwt_expire: 8  # Access Token有效期8小时
+  jwt_secret: "bluebell-dev-jwt-secret-change-in-prod"
+  refresh_secret: "bluebell-dev-refresh-secret-change-in-prod"
 
 log:
   level: "info"

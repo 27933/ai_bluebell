@@ -3,7 +3,12 @@
     <div v-if="article" class="article-content">
       <!-- 文章头部 -->
       <div class="article-header">
-        <h1 class="article-title">{{ article.title }}</h1>
+        <div class="article-title-row">
+          <h1 class="article-title">{{ article.title }}</h1>
+          <span v-if="article.is_featured" class="featured-badge">
+            <i class="bi bi-star-fill"></i> 精选
+          </span>
+        </div>
 
         <div class="author-info">
           <div class="author-avatar">{{ getInitial(article.author?.nickname || article.author?.username) }}</div>
@@ -94,25 +99,55 @@
                   <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
                 </div>
               </div>
-              <div class="comment-content">{{ comment.content }}</div>
-              <div class="comment-actions">
-                <a
-                  v-if="authStore.isLoggedIn"
-                  href="javascript:void(0)"
-                  class="action-link"
-                  @click="toggleReply(comment.id)"
-                >
-                  <i class="bi bi-reply"></i> 回复
-                </a>
-                <a
-                  v-if="canDeleteComment(comment)"
-                  href="javascript:void(0)"
-                  class="action-link danger"
-                  @click="handleDeleteComment(comment.id)"
-                >
-                  <i class="bi bi-trash"></i> 删除
-                </a>
-              </div>
+              <template v-if="editingCommentId === comment.id">
+                <div class="edit-form">
+                  <textarea
+                    v-model="editingContent"
+                    class="form-control"
+                    rows="3"
+                    autofocus
+                  />
+                  <div class="reply-form-actions">
+                    <button
+                      class="btn btn-primary btn-sm"
+                      @click="handleUpdateComment(comment.id)"
+                      :disabled="commentLoading"
+                    >
+                      {{ commentLoading ? '保存中...' : '保存' }}
+                    </button>
+                    <button class="btn btn-outline btn-sm" @click="cancelEdit">取消</button>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="comment-content">{{ comment.content }}</div>
+                <div class="comment-actions">
+                  <a
+                    v-if="authStore.isLoggedIn"
+                    href="javascript:void(0)"
+                    class="action-link"
+                    @click="toggleReply(comment.id)"
+                  >
+                    <i class="bi bi-reply"></i> 回复
+                  </a>
+                  <a
+                    v-if="canEditComment(comment)"
+                    href="javascript:void(0)"
+                    class="action-link"
+                    @click="startEdit(comment)"
+                  >
+                    <i class="bi bi-pencil"></i> 编辑
+                  </a>
+                  <a
+                    v-if="canDeleteComment(comment)"
+                    href="javascript:void(0)"
+                    class="action-link danger"
+                    @click="handleDeleteComment(comment.id)"
+                  >
+                    <i class="bi bi-trash"></i> 删除
+                  </a>
+                </div>
+              </template>
             </template>
 
             <!-- 回复表单 -->
@@ -146,17 +181,47 @@
                     <span class="comment-time">{{ formatDate(reply.created_at) }}</span>
                   </div>
                 </div>
-                <div class="comment-content">{{ reply.content }}</div>
-                <div class="comment-actions">
-                  <a
-                    v-if="canDeleteComment(reply)"
-                    href="javascript:void(0)"
-                    class="action-link danger"
-                    @click="handleDeleteComment(reply.id)"
-                  >
-                    <i class="bi bi-trash"></i> 删除
-                  </a>
-                </div>
+                <template v-if="editingCommentId === reply.id">
+                  <div class="edit-form">
+                    <textarea
+                      v-model="editingContent"
+                      class="form-control"
+                      rows="2"
+                      autofocus
+                    />
+                    <div class="reply-form-actions">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        @click="handleUpdateComment(reply.id)"
+                        :disabled="commentLoading"
+                      >
+                        {{ commentLoading ? '保存中...' : '保存' }}
+                      </button>
+                      <button class="btn btn-outline btn-sm" @click="cancelEdit">取消</button>
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="comment-content">{{ reply.content }}</div>
+                  <div class="comment-actions">
+                    <a
+                      v-if="canEditComment(reply)"
+                      href="javascript:void(0)"
+                      class="action-link"
+                      @click="startEdit(reply)"
+                    >
+                      <i class="bi bi-pencil"></i> 编辑
+                    </a>
+                    <a
+                      v-if="canDeleteComment(reply)"
+                      href="javascript:void(0)"
+                      class="action-link danger"
+                      @click="handleDeleteComment(reply.id)"
+                    >
+                      <i class="bi bi-trash"></i> 删除
+                    </a>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -190,6 +255,8 @@ const commentLoading = ref(false)
 const isLiked = ref(false)
 const replyingTo = ref<string | null>(null)
 const replyContent = ref('')
+const editingCommentId = ref<string | null>(null)
+const editingContent = ref('')
 
 function getInitial(name?: string): string {
   if (!name) return '？'
@@ -213,6 +280,7 @@ interface Article {
   created_at: string
   author_id?: string
   author?: Author
+  is_featured: boolean
 }
 
 interface Comment {
@@ -249,6 +317,43 @@ function canDeleteComment(comment: Comment): boolean {
     (authStore.user.role === 'author' || authStore.user.role === 'admin')
   const isAdmin = authStore.user.role === 'admin'
   return isCommentAuthor || isArticleAuthor || isAdmin
+}
+
+function canEditComment(comment: Comment): boolean {
+  if (!authStore.isLoggedIn || !authStore.user) return false
+  return comment.author?.id === authStore.user.id
+}
+
+function startEdit(comment: Comment) {
+  editingCommentId.value = comment.id
+  editingContent.value = comment.content
+  replyingTo.value = null
+}
+
+function cancelEdit() {
+  editingCommentId.value = null
+  editingContent.value = ''
+}
+
+async function handleUpdateComment(commentId: string) {
+  if (!editingContent.value.trim()) return
+  commentLoading.value = true
+  try {
+    const response = await apiClient.put(`/comments/${commentId}`, {
+      content: editingContent.value.trim(),
+    })
+    if (response.code === 1000) {
+      const c = comments.value.find((c) => c.id === commentId)
+      if (c) c.content = editingContent.value.trim()
+      cancelEdit()
+    } else {
+      ElMessage.error(response.msg || '编辑失败')
+    }
+  } catch (error: any) {
+    ElMessage.error('编辑失败')
+  } finally {
+    commentLoading.value = false
+  }
 }
 
 function toggleReply(commentId: string) {
@@ -516,12 +621,36 @@ onMounted(() => {
   padding-bottom: 2rem;
 }
 
+.article-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .article-title {
   font-size: 2rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 1rem 0;
+  margin: 0;
   line-height: 1.4;
+  flex: 1;
+}
+
+.featured-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
 }
 
 .author-info {
@@ -825,7 +954,8 @@ onMounted(() => {
   color: #dc2626;
 }
 
-.reply-form {
+.reply-form,
+.edit-form {
   margin-top: 0.75rem;
   padding: 0.75rem;
   background: #f8fafc;

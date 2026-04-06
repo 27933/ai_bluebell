@@ -25,6 +25,8 @@ const (
 	// 导出相关错误码
 	CodeNoPermission    ResCode = 1013
 	CodeArticleNotExist ResCode = 1014
+
+	CodeUserBanned ResCode = 1015
 )
 
 // codeMsgMap 定义一个Map结构用来保存与状态码对应的状态信息
@@ -49,6 +51,8 @@ var codeMsgMap = map[ResCode]string{
 	// 导出相关错误码
 	CodeNoPermission:    "没有权限",
 	CodeArticleNotExist: "文章不存在",
+
+	CodeUserBanned: "账号已被封禁",
 }
 
 func (c ResCode) Msg() string {

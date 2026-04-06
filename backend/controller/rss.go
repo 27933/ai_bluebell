@@ -11,8 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// RSSItem RSS条目
-type RSSItem struct {
+type rssItem struct {
 	Title       string `xml:"title"`
 	Link        string `xml:"link"`
 	Description string `xml:"description"`
@@ -20,34 +19,23 @@ type RSSItem struct {
 	Author      string `xml:"author"`
 }
 
-// RSSChannel RSS频道
-type RSSChannel struct {
-	Title       string    `xml:"title"`
-	Link        string    `xml:"link"`
-	Description string    `xml:"description"`
-	Language    string    `xml:"language"`
-	PubDate     string    `xml:"pubDate"`
-	Items       []RSSItem `xml:"item"`
+type rssChannel struct {
+	Title         string    `xml:"title"`
+	Link          string    `xml:"link"`
+	Description   string    `xml:"description"`
+	Language      string    `xml:"language"`
+	LastBuildDate string    `xml:"lastBuildDate"`
+	Items         []rssItem `xml:"item"`
 }
 
-// RSS RSS根元素
-type RSS struct {
+type rssFeed struct {
 	XMLName xml.Name   `xml:"rss"`
 	Version string     `xml:"version,attr"`
-	Channel RSSChannel `xml:"channel"`
+	Channel rssChannel `xml:"channel"`
 }
 
-// GetRSSHandler 获取RSS订阅的处理函数
-// @Summary 获取RSS订阅
-// @Description 获取最新文章的RSS订阅
-// @Tags RSS
-// @Accept json
-// @Produce xml
-// @Success 200 {string} string "RSS XML"
-// @Failure 500 {object} controller._ResponseError "服务器错误"
-// @Router /api/v1/rss [get]
+// GetRSSHandler 返回标准 RSS 2.0 XML，可直接被 RSS 阅读器订阅
 func GetRSSHandler(c *gin.Context) {
-	// 1. 获取文章列表（最新的20篇已发布文章）
 	articles, err := logic.GetRSSArticles(20)
 	if err != nil {
 		zap.L().Error("logic.GetRSSArticles() failed", zap.Error(err))
@@ -55,38 +43,46 @@ func GetRSSHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. 构建RSS内容
-	items := make([]RSSItem, 0, len(articles))
-	for _, article := range articles {
-		item := RSSItem{
-			Title:       article.Title,
-			Link:        fmt.Sprintf("https://example.com/articles/%d", article.ID),
-			Description: article.Summary,
-			PubDate:     article.CreatedAt.Format(time.RFC1123Z),
-			Author:      fmt.Sprintf("Author%d", article.AuthorID), // 简化处理，使用作者ID
+	// 用请求 Host 构建链接，兼容本地开发和生产环境
+	scheme := "http"
+	if c.Request.TLS != nil {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	items := make([]rssItem, 0, len(articles))
+	for _, a := range articles {
+		author := a.AuthorUsername
+		if a.AuthorNickname != "" {
+			author = a.AuthorNickname
 		}
-		items = append(items, item)
+		items = append(items, rssItem{
+			Title:       a.Title,
+			Link:        fmt.Sprintf("%s/article/%d", baseURL, a.ID),
+			Description: a.Summary,
+			PubDate:     a.CreatedAt.Format(time.RFC1123Z),
+			Author:      author,
+		})
 	}
 
-	rss := RSS{
+	feed := rssFeed{
 		Version: "2.0",
-		Channel: RSSChannel{
-			Title:       "知识博客",
-			Link:        "https://example.com",
-			Description: "知识博客 - 分享技术，传播知识",
-			Language:    "zh-CN",
-			PubDate:     time.Now().Format(time.RFC1123Z),
-			Items:       items,
+		Channel: rssChannel{
+			Title:         "Bluebell",
+			Link:          baseURL,
+			Description:   "Bluebell - 分享技术，传播知识",
+			Language:      "zh-CN",
+			LastBuildDate: time.Now().Format(time.RFC1123Z),
+			Items:         items,
 		},
 	}
 
-	// 3. 返回JSON格式的RSS数据
-	ResponseSuccess(c, gin.H{
-		"title":       rss.Channel.Title,
-		"link":        rss.Channel.Link,
-		"description": rss.Channel.Description,
-		"language":    rss.Channel.Language,
-		"pub_date":    rss.Channel.PubDate,
-		"items":       rss.Channel.Items,
-	})
+	output, err := xml.MarshalIndent(feed, "", "  ")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error generating RSS feed")
+		return
+	}
+
+	c.Data(http.StatusOK, "application/rss+xml; charset=utf-8",
+		append([]byte(xml.Header), output...))
 }

@@ -13,6 +13,9 @@
         <router-link to="/tags" class="nav-item">
           <a class="nav-link">标签</a>
         </router-link>
+        <a :href="rssUrl" target="_blank" class="nav-item rss-link" title="RSS 订阅">
+          <i class="bi bi-rss"></i>
+        </a>
 
         <template v-if="!authStore.isLoggedIn">
           <router-link to="/login" class="nav-item auth-link">
@@ -67,6 +70,9 @@
         <router-link to="/tags" class="mobile-nav-link" @click="closeMobileMenu">
           <i class="bi bi-tags"></i> 标签
         </router-link>
+        <a :href="rssUrl" target="_blank" class="mobile-nav-link" @click="closeMobileMenu">
+          <i class="bi bi-rss"></i> RSS 订阅
+        </a>
 
         <template v-if="!authStore.isLoggedIn">
           <router-link to="/login" class="mobile-nav-link primary" @click="closeMobileMenu">
@@ -113,6 +119,8 @@ const authStore = useAuthStore()
 const router = useRouter()
 const userMenuOpen = ref(false)
 const mobileMenuOpen = ref(false)
+
+const rssUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8084/api/v1') + '/rss'
 let closeTimer: ReturnType<typeof setTimeout> | null = null
 
 function toggleMobileMenu() {
@@ -202,6 +210,7 @@ async function handleLogout() {
 
 .navbar-nav {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0;
   list-style: none;
@@ -233,6 +242,21 @@ async function handleLogout() {
 
 .ms-auto {
   margin-left: auto;
+}
+
+.rss-link {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.5rem;
+  margin: 0 0.25rem;
+  color: #f97316;
+  font-size: 1.1rem;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.rss-link:hover {
+  opacity: 0.7;
 }
 
 /* ===== 用户菜单 ===== */

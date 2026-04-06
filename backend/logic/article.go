@@ -285,7 +285,7 @@ func SearchArticles(param *models.ParamArticleList) ([]*models.Article, int64, e
 }
 
 // GetAdminArticles 管理员获取所有文章
-func GetAdminArticles(param *models.ParamArticleList) ([]*models.Article, int64, error) {
+func GetAdminArticles(param *models.ParamArticleList) ([]*models.AdminArticleListItem, int64, error) {
 	// 参数验证
 	if param.Page < 1 {
 		param.Page = 1
@@ -293,14 +293,11 @@ func GetAdminArticles(param *models.ParamArticleList) ([]*models.Article, int64,
 	if param.Size < 1 || param.Size > 50 {
 		param.Size = 20
 	}
-	if param.Sort == "" {
-		param.Sort = "time"
-	}
 
-	// 管理员可以查看所有状态的文章
-	articles, total, err := mysql.GetArticleList(param)
+	// 管理员可以查看所有状态的文章，含作者信息
+	articles, total, err := mysql.GetAdminArticleList(param)
 	if err != nil {
-		zap.L().Error("mysql.GetArticleList() failed", zap.Error(err))
+		zap.L().Error("mysql.GetAdminArticleList() failed", zap.Error(err))
 		return nil, 0, err
 	}
 

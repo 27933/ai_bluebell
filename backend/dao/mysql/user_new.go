@@ -118,6 +118,10 @@ func Login(user *models.User) (err error) {
 	if password != user.Password {
 		return ErrorInvalidPassword
 	}
+	// 判断账号是否被封禁
+	if user.Status != string(models.UserStatusActive) {
+		return ErrorUserBanned
+	}
 	return
 }
 

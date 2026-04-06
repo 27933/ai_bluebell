@@ -1,19 +1,28 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import Navbar from './components/Navbar.vue'
 import apiClient from './services/api'
 import { useAuthStore } from './stores/auth'
 
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 // token 存在但 user 缺失时（旧会话或首次使用新代码），自动拉取用户信息
 // 在组件 onMounted 中执行，确保 Vue 响应式系统完全就绪
 onMounted(async () => {
-  if (authStore.token?.access_token && !authStore.user) {
+  if (authStore.token?.access_token) {
     try {
       const response = await apiClient.get('/auth/profile') as any
       if (response.code === 1000) {
         authStore.setUser(response.data)
+      } else if (response.code === 1015) {
+        // 账号已被封禁
+        authStore.logout()
+        ElMessage.error('账号已被封禁，请联系管理员')
+        router.push('/login')
       }
     } catch {
       // token 已失效，保持未登录状态
@@ -24,7 +33,7 @@ onMounted(async () => {
 
 <template>
   <div class="app">
-    <Navbar />
+    <Navbar v-if="!route.path.startsWith('/admin')" />
     <main class="main-content">
       <router-view />
     </main>
