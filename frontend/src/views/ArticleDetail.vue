@@ -244,6 +244,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import apiClient from '../services/api'
 import { useAuthStore } from '../stores/auth'
 
@@ -376,9 +377,10 @@ const canDelete = computed(() => canEdit.value)
 function renderMarkdown(content: string): string {
   if (!content) return ''
   try {
-    return marked(content) as string
+    const raw = marked(content) as string
+    return DOMPurify.sanitize(raw)
   } catch {
-    return `<p>${content.replace(/\n/g, '<br>')}</p>`
+    return DOMPurify.sanitize(`<p>${content.replace(/\n/g, '<br>')}</p>`)
   }
 }
 
