@@ -26,6 +26,10 @@ backend/.air/
 backend/conf/cloud.yaml
 backend/conf/prod.yaml
 
+# 用户上传文件
+backend/uploads/
+uploads/
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
