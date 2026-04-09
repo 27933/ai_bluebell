@@ -233,8 +233,22 @@
       <p>文章不存在</p>
     </div>
 
-    <div v-else class="loading-state">
-      <p>加载中...</p>
+    <!-- 骨架屏 -->
+    <div v-else class="skeleton-wrapper">
+      <div class="skeleton-title"></div>
+      <div class="skeleton-meta">
+        <div class="skeleton-avatar"></div>
+        <div class="skeleton-text-group">
+          <div class="skeleton-line w-32"></div>
+          <div class="skeleton-line w-20"></div>
+        </div>
+      </div>
+      <div class="skeleton-line w-full"></div>
+      <div class="skeleton-line w-full"></div>
+      <div class="skeleton-line w-4/5"></div>
+      <div class="skeleton-line w-full mt-4"></div>
+      <div class="skeleton-line w-full"></div>
+      <div class="skeleton-line w-3/5"></div>
     </div>
   </div>
 </template>
@@ -703,12 +717,13 @@ onMounted(() => {
 
 /* 文章内容 */
 .article-body {
-  margin: 2rem 0;
+  margin: 2rem auto;
+  max-width: 720px;
 }
 
 .article-text {
   color: var(--text-primary);
-  line-height: 1.8;
+  line-height: 1.85;
   font-size: 1.05rem;
   word-break: break-word;
 }
@@ -734,21 +749,26 @@ onMounted(() => {
   margin: 0.5em 0;
 }
 :deep(.markdown-body code) {
-  background: #f3f4f6;
+  background: #f1f3f5;
+  color: #d63384;
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.9em;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.875em;
 }
 :deep(.markdown-body pre) {
-  background: #f3f4f6;
-  padding: 1em;
-  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1.25em 1.5em;
+  border-radius: 10px;
   overflow-x: auto;
+  margin: 1.25em 0;
 }
 :deep(.markdown-body pre code) {
   background: none;
+  color: inherit;
   padding: 0;
+  font-size: 0.9em;
 }
 :deep(.markdown-body blockquote) {
   border-left: 4px solid #ddd;
@@ -767,7 +787,7 @@ onMounted(() => {
   margin: 1.5em 0;
 }
 :deep(.markdown-body a) {
-  color: #409eff;
+  color: var(--primary-color);
   text-decoration: none;
 }
 :deep(.markdown-body a:hover) { text-decoration: underline; }
@@ -1007,12 +1027,71 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.not-found,
-.loading-state {
+.not-found {
   text-align: center;
   padding: 2rem;
   color: var(--text-secondary);
 }
+
+/* 骨架屏 */
+.skeleton-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton-title,
+.skeleton-line,
+.skeleton-avatar {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+
+.skeleton-title {
+  height: 2.25rem;
+  width: 70%;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+}
+
+.skeleton-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeleton-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.skeleton-line {
+  height: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.w-full { width: 100%; }
+.w-4\/5 { width: 80%; }
+.w-3\/5 { width: 60%; }
+.w-32 { width: 8rem; }
+.w-20 { width: 5rem; }
+.mt-4 { margin-top: 1.5rem; }
 
 @media (max-width: 768px) {
   .article-container {

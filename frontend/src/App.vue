@@ -92,6 +92,15 @@ textarea {
   --primary-color: #2563eb;
   --secondary-color: #64748b;
   --danger-color: #ef4444;
+
+  /* 覆盖 Element Plus 默认主色，与项目色系统一 */
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #5b8af0;
+  --el-color-primary-light-5: #93b4f5;
+  --el-color-primary-light-7: #c9d9fa;
+  --el-color-primary-light-8: #dce8fc;
+  --el-color-primary-light-9: #eef3fe;
+  --el-color-primary-dark-2: #1d4ed8;
 }
 </style>
 

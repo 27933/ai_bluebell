@@ -9,23 +9,43 @@
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-number">{{ stats.published }}</div>
-        <div class="stat-label">已发布文章</div>
+        <div class="stat-icon stat-icon-indigo">
+          <i class="bi bi-file-earmark-text"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{ stats.published }}</div>
+          <div class="stat-label">已发布文章</div>
+        </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-number">{{ stats.totalViews }}</div>
-        <div class="stat-label">总浏览数</div>
+        <div class="stat-icon stat-icon-cyan">
+          <i class="bi bi-eye"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{ stats.totalViews }}</div>
+          <div class="stat-label">总浏览数</div>
+        </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-number">{{ stats.totalLikes }}</div>
-        <div class="stat-label">获赞总数</div>
+        <div class="stat-icon stat-icon-rose">
+          <i class="bi bi-heart"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{ stats.totalLikes }}</div>
+          <div class="stat-label">获赞总数</div>
+        </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-number">{{ stats.totalComments }}</div>
-        <div class="stat-label">总评论数</div>
+        <div class="stat-icon stat-icon-amber">
+          <i class="bi bi-chat-dots"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{ stats.totalComments }}</div>
+          <div class="stat-label">总评论数</div>
+        </div>
       </div>
     </div>
 
@@ -400,21 +420,65 @@ watch(() => timeRange.value, () => {
 
 .stat-card {
   background: var(--card-bg);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.5rem;
   border: 1px solid var(--border-color);
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.stat-icon-indigo {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.stat-icon-cyan {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.stat-icon-rose {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.stat-icon-amber {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.stat-info {
+  flex: 1;
 }
 
 .stat-number {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: var(--primary-color);
-  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
 }
 
@@ -657,6 +721,21 @@ watch(() => timeRange.value, () => {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .stat-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+  }
+
+  .stat-number {
+    font-size: 1.4rem;
   }
 
   .articles-header {
